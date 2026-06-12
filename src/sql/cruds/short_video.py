@@ -1,0 +1,46 @@
+from src.sql.models.short_video import ShortVideo
+from sqlalchemy.orm import Session
+
+
+def create_short_video(db: Session, short_video_data: dict):
+    short_video = ShortVideo()
+    short_video.content_id = short_video_data.get("content_id")
+    short_video.title = short_video_data.get("title")
+    short_video.output_path = short_video_data.get("output_path")
+    short_video.status = short_video_data.get("status")
+    db.add(short_video)
+    db.commit()
+    db.refresh(short_video)
+    return short_video
+
+
+def get_short_video(db: Session, short_video_id: int) -> ShortVideo:
+    return db.query(ShortVideo).filter(ShortVideo.id == short_video_id).first()
+
+
+def update_short_video(
+    db: Session, short_video: ShortVideo, short_video_data: dict
+) -> ShortVideo:
+    if "content_id" in short_video_data:
+        short_video.content_id = short_video_data["content_id"]
+    if "title" in short_video_data:
+        short_video.title = short_video_data["title"]
+    if "output_path" in short_video_data:
+        short_video.output_path = short_video_data["output_path"]
+    if "status" in short_video_data:
+        short_video.status = short_video_data["status"]
+    if "published_at" in short_video_data:
+        short_video.published_at = short_video_data["published_at"]
+    db.commit()
+    db.refresh(short_video)
+    return short_video
+
+
+def delete_short_video(db: Session, short_video: ShortVideo) -> bool:
+    db.delete(short_video)
+    db.commit()
+    return True
+
+
+def get_all_short_videos(db: Session):
+    return db.query(ShortVideo).all()
