@@ -18,6 +18,10 @@ def get_short_video(db: Session, short_video_id: int) -> ShortVideo:
     return db.query(ShortVideo).filter(ShortVideo.id == short_video_id).first()
 
 
+def get_short_video_by_content_id(db: Session, content_id: int) -> ShortVideo:
+    return db.query(ShortVideo).filter(ShortVideo.content_id == content_id).first()
+
+
 def update_short_video(
     db: Session, short_video: ShortVideo, short_video_data: dict
 ) -> ShortVideo:
@@ -31,6 +35,12 @@ def update_short_video(
         short_video.status = short_video_data["status"]
     if "published_at" in short_video_data:
         short_video.published_at = short_video_data["published_at"]
+    if "description" in short_video_data:
+        short_video.description = short_video_data["description"]
+    if "hashtags" in short_video_data:
+        short_video.tags = short_video_data["hashtags"]
+    if "youtube_video_path" in short_video_data:
+        short_video.youtube_video_path = short_video_data["youtube_video_path"]
     db.commit()
     db.refresh(short_video)
     return short_video

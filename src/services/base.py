@@ -8,12 +8,12 @@ load_dotenv()
 
 
 class BaseService:
-    def __init__(self, provider_name: str, env_key_name: str):
+    def __init__(self, provider_name: str, env_key_name: str, check_env_key=True):
         self.provider = provider_name
         self.__api_key = os.getenv(env_key_name)
         self.db: Session = next(get_db())
 
-        if not self.__api_key and env_key_name != "VIDEO_MERGE_API_KEY":
+        if check_env_key and not self.__api_key:
             logger.critical(
                 f"Initialization Failed: Key '{env_key_name}' missing in environment."
             )

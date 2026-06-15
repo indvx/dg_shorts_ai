@@ -13,7 +13,7 @@ import math
 
 class VideoMergeService(BaseService):
     def __init__(self):
-        super().__init__(provider_name="VideoMerge", env_key_name="VIDEO_MERGE_API_KEY")
+        super().__init__(provider_name="VideoMerge", env_key_name="VIDEO_MERGE_API_KEY", check_env_key=False)
 
     def merge_and_mute_video(self, content_id: int):
         logger.info("Audio-Video Stitching Module started...")
