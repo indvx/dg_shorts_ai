@@ -1,5 +1,9 @@
-from src.sql.models.short_video import ShortVideo
+from datetime import date as dt_date, timedelta
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+from src.sql.models.short_video import ShortVideo
 
 
 def create_short_video(db: Session, short_video_data: dict):
@@ -54,3 +58,27 @@ def delete_short_video(db: Session, short_video: ShortVideo) -> bool:
 
 def get_all_short_videos(db: Session):
     return db.query(ShortVideo).all()
+
+
+def get_short_videos_by_status(db: Session, status: str, date: dt_date = None):
+
+    if date:
+        return (
+            db.query(ShortVideo)
+            .filter(
+                ShortVideo.status == status,
+                func.date(ShortVideo.published_at) == date,
+            )
+            .all()
+        )
+    else:
+        last_7_days = dt_date.today() - timedelta(days=7)
+        return (
+            db.query(ShortVideo)
+            .filter(
+                ShortVideo.status == status,
+                ShortVideo.published_at >= last_7_days,
+            )
+            .all()
+        )
+    

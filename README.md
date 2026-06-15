@@ -20,6 +20,8 @@ graph TD
     J -->|Complete| K[Live YouTube Short Post]
 ```
 
+In addition to manual HTTP step-by-step triggers, the application features an automatic, scheduled background orchestrator (`APScheduler`) configured in `main.py` that periodically runs the video generation and publication workflow and performs automated disk cleanups of published videos.
+
 ---
 
 ## 📂 Complete Project Directory Structure
@@ -31,7 +33,7 @@ GoudShorts_AI/
 ├── .gitignore            # Excludes temporary cache, binaries, and local tokens from Git
 ├── alembic.ini           # Alembic database migration config file
 ├── requirements.txt      # Production-locked Python dependencies
-├── main.py               # FastAPI gateway server and Uvicorn entrypoint
+├── main.py               # FastAPI gateway server and Uvicorn entrypoint (configures APScheduler background tasks)
 │
 ├── alembic/              # Database migration version files
 │   └── versions/         # Python migration scripts for tables
@@ -48,9 +50,12 @@ GoudShorts_AI/
 │   ├── client_secret.json # OAuth Client JSON secrets
 │   └── token.pickle      # Generated OAuth access/refresh token pickle
 │
+├── utils/                # Utility modules
+│   └── logger.py         # Singleton central logging engine
+│
 └── src/
     ├── __init__.py
-    ├── orchestrator.py   # Orchestration Engine Coordinator
+    ├── orchestrator.py   # Legacy/standalone YouTube upload orchestration helper
     │
     ├── api/              # HTTP Routing & Handlers
     │   ├── __init__.py
@@ -75,16 +80,17 @@ GoudShorts_AI/
     │   ├── cruds/        # CRUD operations helpers (content, short_video)
     │   └── models/       # SQLAlchemy models mapping schema (contents, short_videos)
     │
-    └── services/         # Third-party platform API wrappers
+    └── services/         # Orchestration & utility services
         ├── __init__.py
         ├── base.py       # Base service abstraction layer
-        ├── llm.py        # Gemini AI text script and metadata generator
-        ├── sript.py      # Main ScriptService coordinating script-to-publish steps
-        ├── elevenlabs.py # ElevenLabs Voice synthesis integration
-        ├── video_generator.py # Pexels video fetcher and downloader
+        ├── sript.py      # Main ScriptService coordinating script-to-publish steps (named sript.py)
+        ├── utility.py    # UtilityService running database cleanup and background pipeline automation
         ├── video_merge.py # MoviePy compiler (combines audio, mutes/loops video)
-        └── youtube/      # YouTube OAuth authentication & upload wrapper
-            └── youtube.py
+        └── integrations/ # Third-party API wrappers
+            ├── elevenlabs.py       # ElevenLabs Voice synthesis integration
+            ├── llm.py              # Gemini AI text script and metadata generator (google-genai SDK)
+            ├── video_generator.py  # Pexels video fetcher and downloader
+            └── youtube.py          # YouTube OAuth authentication & upload wrapper
 ```
 
 ---
@@ -100,13 +106,16 @@ fastapi[standard]==0.136.3
 uvicorn==0.49.0
 alembic==1.18.4
 psycopg2-binary==2.9.12
-google-generativeai
-elevenlabs
-moviepy
-requests
-google-api-python-client
-google-auth-oauthlib
-google-auth-httplib2
+sqlalchemy==2.0.50
+apscheduler==3.11.2
+python-dotenv==1.2.2
+google-genai==2.8.0
+elevenlabs==2.52.0
+moviepy==2.2.1
+requests==2.34.2
+google-api-python-client==2.197.0
+google-auth-oauthlib==1.4.0
+google-auth-httplib2==0.4.0
 ```
 
 Run this command in your terminal to install everything:
@@ -128,7 +137,7 @@ DB_USER='postgres'
 DB_PASSWORD='your_secure_db_password'
 DB_NAME='dgshortai'
 
-# Google Client Credentials paths (Notice spelling defined in code)
+# Google Client Credentials paths
 GOOGLE_CLINT_SECRET="secret/client_secret.json"
 GOOGLE_TOKEN_PICKEL="secret/token.pickle"
 
@@ -152,7 +161,7 @@ alembic upgrade head
 
 ## 🤖 Step 3: Google Gemini (Script & Metadata Engine) Setup
 
-Our `LLMService` utilizes Gemini (`gemini-2.5-flash` model) for script generation and SEO metadata extraction.
+Our `LLMService` utilizes the new Google GenAI SDK (`google-genai` package) with the `gemini-2.5-flash` model for Hindi script generation and structured SEO metadata extraction.
 
 1. Open [Google AI Studio](https://aistudio.google.com/).
 2. Click **Get API Key** and copy the token into the `GEMINI_API_KEY` field in your `.env`.
@@ -166,7 +175,7 @@ ElevenLabs provides high-quality voice synthesis for storytelling.
 1. Log into your dashboard at [ElevenLabs.io](https://elevenlabs.io/).
 2. Go to your Profile settings on the bottom left ➔ select **Profile + API Keys**.
 3. Copy your API Key and paste it into the `ELEVENLABS_API_KEY` field in your `.env`.
-4. The default voice id used is `JBFqnCBsd6RMkjVDRZzb` (can be overridden).
+4. The default voice id used is `JBFqnCBsd6RMkjVDRZzb` (configured in the database and service).
 
 ---
 
@@ -228,37 +237,20 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser to
 
 | Method | Endpoint | Description | Payload / Params |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/api/v1/generate-script` | Generates a 50-word script about a topic. | `{"topic": "string"}` |
-| **POST** | `/api/v1/text/{content_id}/generate-audio` | Converts script to MP3 voiceover. | - |
-| **POST** | `/api/v1/text/{content_id}/get-video` | Fetches vertical video background from Pexels. | - |
-| **POST** | `/api/v1/content/{content_id}/merge-video` | Stitches voiceover audio onto muted background loop. | - |
-| **POST** | `/api/v1/video/{content_id}/metadata` | Generates title, description, and hashtags using LLM. | - |
-| **POST** | `/api/v1/video/{video_id}/publish` | Broadcast uploads short video to YouTube. | - |
+| **POST** | `/api/v1/generate-script` | Generates a Hindi script about a topic and creates a draft Content record. | `{"topic": "string"}` |
+| **POST** | `/api/v1/text/{content_id}/generate-audio` | Converts script text to speech audio via ElevenLabs. | - |
+| **POST** | `/api/v1/text/{content_id}/get-video` | Fetches vertical matching background video from Pexels. | - |
+| **POST** | `/api/v1/content/{content_id}/merge-video` | Merges audio and video, loops/clips video as needed, and creates a ShortVideo. | - |
+| **POST** | `/api/v1/video/{content_id}/metadata` | Generates Title, Description, and Tags via LLM. | - |
+| **POST** | `/api/v1/video/{video_id}/publish` | Direct-uploads the compiled video onto YouTube via API. | - |
 | **GET** | `/logs/current` | Fetches the last 500 lines of today's live execution log. | - |
 | **GET** | `/logs/filter` | Fetches historical log file archives. | `?date=YYYY-MM-DD` |
 
-### 3. Fetching Logs
+### 3. Automatic Background Task Scheduling
 
-To check live operation histories or archival records:
-
-```bash
-# Fetching current live logs
-curl -X GET "http://localhost:8000/logs/current"
-```
-
-### 4. Setting Up Daily Automation (Production Cron Jobs)
-
-To schedule a post every day at exactly 6:00 PM:
-
-```bash
-crontab -e
-```
-
-Add this cron configuration at the bottom of the system sheet:
-
-```text
-0 18 * * * curl -X POST "http://localhost:8000/api/v1/generate-short?topic=Ancient%20Mysteries" >> /absolute/path/to/GoudShorts_AI/logs/cron.log 2>&1
-```
+The application initializes an `APScheduler` background runner when the FastAPI server starts:
+- **Automation Pipeline (`upload_video_on_youtube`):** Runs every **10 minutes** to automatically trigger the entire pipeline from end-to-end (Topic: `"Major Events of the 20th Century"`).
+- **Cleanup Job (`clean_uploaded_video`):** Runs every **10 seconds** to scan the database for successfully published videos. It removes the local video, audio, and output files from the disk and purges the associated database records to avoid storage clutter.
 
 ---
 

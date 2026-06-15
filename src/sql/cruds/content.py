@@ -41,3 +41,7 @@ def delete_content(db: Session, content: Content) -> bool:
     db.delete(content)
     db.commit()
     return True
+
+
+def get_contents_by_status(db: Session, status: str):
+    return db.query(Content).filter(Content.status == status).all()

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from src.schemas.schema import GenerateScriptSchema
 from src.services.sript import ScriptService
-from src.services.video_generator import VideoGeneratorService
+from src.services.integrations.video_generator import VideoGeneratorService
 from src.services.video_merge import VideoMergeService
-from src.services.youtube.youtube import YouTubeService
+from src.services.integrations.youtube import YouTubeService
 from utils.logger import app_logger
 
 router = APIRouter(prefix="/api/v1")

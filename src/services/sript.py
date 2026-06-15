@@ -4,9 +4,9 @@ from utils.logger import app_logger as logger
 from src.sql.cruds import content as content_crud, short_video as short_video_crud
 from src.enums.content import ContentStatus
 from src.enums.short_video import ShortVideoStatus
-from src.services.llm import LLMService
-from src.services.elevenlabs import AudioService
-from src.services.youtube.youtube import YouTubeService
+from src.services.integrations.llm import LLMService
+from src.services.integrations.elevenlabs import AudioService
+from src.services.integrations.youtube import YouTubeService
 from datetime import datetime, UTC
 
 
@@ -19,15 +19,18 @@ class ScriptService(BaseService):
         self.llm_service = LLMService()
         self.audio_service = AudioService()
 
-    def generate_script(self, topic: str) -> str:
+    def generate_topic(self, topic: str | None = None) -> str:
+        return self.llm_service.generate_topic(topic)
+
+    def generate_script(self, topic: str):
         content = {"title": topic}
         try:
             script = self.llm_service.generate_script(topic)
             logger.info(f"Script processed: {len(script.split())} words.")
             content["content"] = script
             content["status"] = ContentStatus.DRAFT
-            content_crud.create_content(self.db, content)
-            return script
+            new_content = content_crud.create_content(self.db, content)
+            return new_content
         except Exception as e:
             logger.error(f"Failed to generate script: {str(e)}")
             raise Exception("Failed to generate script")

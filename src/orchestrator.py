@@ -1,4 +1,4 @@
-from src.services.youtube import YouTubeService
+from src.services.integrations.youtube import YouTubeService
 from utils.logger import app_logger as logger
 
 
