@@ -12,9 +12,7 @@ from datetime import datetime, UTC
 
 class ScriptService(BaseService):
     def __init__(self):
-        super().__init__(
-            provider_name="script", env_key_name="GEMINI_API_KEY", check_env_key=False
-        )
+        super().__init__()
         logger.info(f"Script Service initialized.")
         self.llm_service = LLMService()
         self.audio_service = AudioService()
@@ -82,9 +80,14 @@ class ScriptService(BaseService):
 
         # generate metadata
         metadata = self.llm_service.generate_metadata(content_text)
+        metadata_dict = (
+            metadata.model_dump()
+            if hasattr(metadata, "model_dump")
+            else metadata.dict()
+        )
 
         updated_short_video = short_video_crud.update_short_video(
-            self.db, short_video, metadata
+            self.db, short_video, metadata_dict
         )
         return {
             "content_id": short_video.content.id,

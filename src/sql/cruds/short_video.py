@@ -42,7 +42,11 @@ def update_short_video(
     if "description" in short_video_data:
         short_video.description = short_video_data["description"]
     if "hashtags" in short_video_data:
-        short_video.tags = short_video_data["hashtags"]
+        hashtags = short_video_data["hashtags"]
+        if isinstance(hashtags, list):
+            short_video.tags = ",".join(hashtags)
+        else:
+            short_video.tags = hashtags
     if "youtube_video_path" in short_video_data:
         short_video.youtube_video_path = short_video_data["youtube_video_path"]
     db.commit()

@@ -11,7 +11,7 @@ import os
 
 class YouTubeService(BaseService):
     def __init__(self):
-        super().__init__(provider_name="youtube", env_key_name="YOUTUBE_API_KEY", check_env_key=False)
+        super().__init__()
         self.scopes = ["https://www.googleapis.com/auth/youtube.upload"]
         self.secret_file = os.getenv("GOOGLE_CLINT_SECRET")
         self.token_file = os.getenv("GOOGLE_TOKEN_PICKEL")

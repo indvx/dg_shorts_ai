@@ -8,10 +8,9 @@ from src.enums.content import ContentStatus
 
 class VideoGeneratorService(BaseService):
     def __init__(self):
-        super().__init__(
-            provider_name="Pexels Video Generator", env_key_name="PEXELS_API_KEY"
-        )
+        super().__init__()
         self.api_url = "https://api.pexels.com/videos/search"
+        self.api_key = os.getenv("PEXELS_API_KEY")
 
     def fetch_and_download_background(self, content_id: int) -> str:
         content = content_crud.get_content(self.db, content_id)
@@ -21,7 +20,7 @@ class VideoGeneratorService(BaseService):
             raise ValueError("Content audio not generated.")
 
         search_query = content.title
-        headers = {"Authorization": self._get_secure_key()}
+        headers = {"Authorization": self.api_key}
         params = {"query": search_query, "per_page": 5, "orientation": "portrait"}
 
         try:

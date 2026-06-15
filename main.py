@@ -19,8 +19,8 @@ scheduler = BackgroundScheduler()
 @app.on_event("startup")
 def startup_event():
     logger.info("Application started")
-    scheduler.add_job(utility_service.clean_uploaded_video, "interval", seconds=10)
-    scheduler.add_job(utility_service.upload_video_on_youtube, "interval", minutes=3)
+    # scheduler.add_job(utility_service.clean_uploaded_video, "interval", seconds=10)
+    scheduler.add_job(utility_service.upload_video_on_youtube, "interval", minutes=10)
     scheduler.start()
 
 

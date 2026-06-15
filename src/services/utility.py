@@ -12,7 +12,7 @@ import shutil
 
 class UtilityService(BaseService):
     def __init__(self):
-        super().__init__(provider_name="Utility", env_key_name="", check_env_key=False)
+        super().__init__()
         self.script_service = ScriptService()
         self.video_merge_service = VideoMergeService()
         self.video_generator_service = VideoGeneratorService()

@@ -1,13 +1,14 @@
 import json
 import time
-from typing import List
-from pydantic import BaseModel
+from typing import List, Optional, Union
+from pydantic import BaseModel, ValidationError
+
 from google import genai
-from google.genai import types
+from openai import OpenAI
+
 from src.services.base import BaseService
 from utils.logger import app_logger as logger
-from src.sql.cruds import content as content_crud
-from src.enums.content import ContentStatus
+import os
 
 
 class VideoMetadata(BaseModel):
@@ -17,112 +18,112 @@ class VideoMetadata(BaseModel):
 
 
 class LLMService(BaseService):
-    def __init__(self, model_name: str = "gemini-2.5-flash"):
-        super().__init__(provider_name="LLM", env_key_name="GEMINI_API_KEY")
-        self.model_name = model_name
-        self.client = genai.Client(api_key=self._get_secure_key())
-        logger.info(f"LLM client initialized. Target model: {self.model_name}")
+    def __init__(self):
+        super().__init__()
+
+        self.gemini_client = None
+        self.openai_client = None
+        self.model_name = os.getenv("AI_MODEL_NAME", "gemini-2.5-flash")
+        self.provider = os.getenv("AI_PROVIDER_NAME", "gemini")
+        self.api_key = os.getenv("AI_API_KEY")
+
+        logger.info(f"AI Provider: {self.provider}")
+        logger.info(f"AI Model: {self.model_name}")
+
+        if self.provider == "gemini":
+            self.gemini_client = genai.Client(api_key=self.api_key)
+        else:
+            self.openai_client = OpenAI(api_key=self.api_key)
+
+        logger.info(f"LLM initialized using provider: {self.provider}")
+
+    def _generate(self, prompt: str) -> str:
+        max_retries = 3
+        delay = 2
+
+        for attempt in range(max_retries):
+            try:
+                if self.provider == "gemini":
+                    response = self.gemini_client.models.generate_content(
+                        model=self.model_name,
+                        contents=prompt,
+                    )
+                    return response.text.strip()
+
+                else:
+                    response = self.openai_client.chat.completions.create(
+                        model=self.model_name,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7,
+                    )
+                    return response.choices[0].message.content.strip()
+
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
+
+                if attempt == max_retries - 1:
+                    logger.error("LLM generation failed permanently")
+                    raise RuntimeError("LLM generation failed") from e
+
+                time.sleep(delay)
+                delay *= 2
+
+        raise RuntimeError("Unreachable code reached in _generate")
 
     def generate_script(self, topic: str) -> str:
-        prompt = (
-            f"Write a short 50-word YouTube short script about '{topic}' in plain simple Hindi language. "
-            f"Do not include brackets, structural cues, scene instructions, emojis or punctuation labels. "
-            f"Output must strictly be raw verbal spoken paragraphs text narration only."
-        )
-        max_retries = 3
-        delay = 2
-        for attempt in range(max_retries):
-            try:
-                response = self.client.models.generate_content(
-                    model=self.model_name,
-                    contents=prompt,
-                )
-                return response.text.strip()
-            except Exception as e:
-                logger.warning(
-                    f"Attempt {attempt + 1} failed to generate script: {str(e)}"
-                )
-                if attempt == max_retries - 1:
-                    logger.error(
-                        f"Failed to generate script after {max_retries} attempts: {str(e)}"
-                    )
-                    raise Exception("Failed to generate script") from e
-                time.sleep(delay)
-                delay *= 2
+        prompt = f"""
+            Write a 50-word YouTube Shorts script in simple Hindi.
+            Topic: {topic}
+            Rules:
+                - Only narration text
+                - No emojis
+                - No scene instructions
+                - No labels
+                - Natural spoken style
+            """
+        return self._generate(prompt)
 
-    def generate_metadata(self, content: str) -> dict:
-        prompt = (
-            f"Generate title, description and hashtags for the following content: '{content}' in plain simple and English or Hindi language. "
-            f"Do not include brackets, structural cues, scene instructions, emojis or punctuation labels. "
-            f"Output must strictly be raw verbal spoken paragraphs text narration only."
-        )
-        max_retries = 3
-        delay = 2
-        for attempt in range(max_retries):
-            try:
-                response = self.client.models.generate_content(
-                    model=self.model_name,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=VideoMetadata,
-                    ),
-                )
-                clean_data = response.text.strip()
-                logger.info(f"Metadata processed: {clean_data}")
-                return json.loads(clean_data)
-            except Exception as e:
-                logger.warning(
-                    f"Attempt {attempt + 1} failed to generate metadata: {str(e)}"
-                )
-                if attempt == max_retries - 1:
-                    logger.error(
-                        f"Failed to generate metadata after {max_retries} attempts: {str(e)}"
-                    )
-                    raise Exception("Failed to generate metadata") from e
-                time.sleep(delay)
-                delay *= 2
+    def generate_metadata(self, content: str) -> VideoMetadata:
+        prompt = f"""
+            Return ONLY valid JSON.
+            Schema:
+            {{
+                "title": "string",
+                "description": "string",
+                "hashtags": ["tag1", "tag2", "tag3"]
+            }}
+            Rules:
+                - Generate a catchy, click-worthy title for the YouTube Short based on the content.
+                - Generate an engaging description summarizing the content.
+                - Generate 3 to 5 relevant hashtags (without the '#' symbol) based on the content and place them in the 'hashtags' list.
+                - Return ONLY the JSON object. No extra text, no markdown block, no explanation.
+            Content: {content}
+        """
 
-    def generate_topic(self, categories: str | None = None) -> str:
+        raw = self._generate(prompt)
+        try:
+            data = json.loads(raw)
+            logger.info(f"Metadata generated: {data}")
+            return VideoMetadata(**data)
+
+        except (json.JSONDecodeError, ValidationError) as e:
+            logger.error(f"Metadata parsing failed: {str(e)}")
+            raise RuntimeError("Invalid metadata format") from e
+
+    def generate_topic(self, categories: Optional[str] = None) -> str:
         category_text = (
-            f"Choose a topic from these categories: {categories}."
+            f"Choose from: {categories}"
             if categories
-            else "Choose a topic from any interesting category."
+            else "Choose any interesting topic"
         )
 
         prompt = f"""
-            Generate one unique and engaging YouTube Shorts topic.
-
-            {category_text}
-
+            Generate ONE viral YouTube Shorts topic.
             Requirements:
-            - Curiosity-driven
-            - Suitable for a 30-60 second video
-            - Short and catchy
-            - Return only the topic text
+                - Curiosity driven
+                - 30–60 second video
+                - Catchy and short
+                - Return ONLY topic text
+            {category_text}
         """
-
-        max_retries = 3
-        delay = 2
-
-        for attempt in range(max_retries):
-            try:
-                response = self.client.models.generate_content(
-                    model=self.model_name,
-                    contents=prompt,
-                )
-                return response.text.strip()
-
-            except Exception as e:
-                logger.warning(
-                    f"Attempt {attempt + 1} failed to generate topic: {str(e)}"
-                )
-
-                if attempt == max_retries - 1:
-                    logger.error(
-                        f"Failed to generate topic after {max_retries} attempts: {str(e)}"
-                    )
-                    raise Exception("Failed to generate topic") from e
-
-                time.sleep(delay)
-                delay *= 2
+        return self._generate(prompt)

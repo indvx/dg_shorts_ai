@@ -10,10 +10,9 @@ from io import BytesIO
 
 class AudioService(BaseService):
     def __init__(self):
-        super().__init__(
-            provider_name="ElevenLabs Voice Engine", env_key_name="ELEVENLABS_API_KEY"
-        )
-        self._elevenlabs = ElevenLabs(api_key=self._get_secure_key())
+        super().__init__()
+        self.api_key = os.getenv("ELEVENLABS_API_KEY")
+        self._elevenlabs = ElevenLabs(api_key=self.api_key)
 
     def generate_speech_file(self, content) -> str:
         logger.info(
