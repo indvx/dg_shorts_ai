@@ -92,6 +92,7 @@ class AutomationService(BaseService):
                 content_status.ContentStatus.AUDIO_GENERATED,
                 content_status.ContentStatus.VIDEO_GENERATED,
                 content_status.ContentStatus.MERGED,
+                content_status.ContentStatus.ERROR,
             ]
             content = content_crud.get_ready_to_process_content(
                 self.db, excluded_statuses, excluded=True
@@ -153,6 +154,7 @@ class AutomationService(BaseService):
             excluded_statuses = [
                 content_status.ContentStatus.VIDEO_GENERATED,
                 content_status.ContentStatus.MERGED,
+                content_status.ContentStatus.ERROR,
             ]
             content = content_crud.get_ready_to_process_content(
                 self.db, excluded_statuses, excluded=True
