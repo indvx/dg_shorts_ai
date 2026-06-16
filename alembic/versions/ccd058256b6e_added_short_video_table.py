@@ -1,4 +1,4 @@
-"""Added shot_video table
+"""Added short_video table
 
 Revision ID: ccd058256b6e
 Revises: 63784cdd1ac6

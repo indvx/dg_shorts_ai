@@ -1,4 +1,4 @@
-"""Added youtube_vide_path in short_video table
+"""Added youtube_video_path in short_video table
 
 Revision ID: 2ed46c0ef6db
 Revises: ef7b2f82ca3d

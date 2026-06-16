@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from src.schemas.schema import GenerateScriptSchema
-from src.services.sript import ScriptService
+from src.services.script import ScriptService
 from src.services.integrations.video_generator import VideoGeneratorService
 from src.services.video_merge import VideoMergeService
 from src.services.integrations.youtube import YouTubeService

@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.sql.models.short_video import ShortVideo
+from src.enums.short_video import ShortVideoStatus
 
 
 def create_short_video(db: Session, short_video_data: dict):
@@ -24,6 +25,19 @@ def get_short_video(db: Session, short_video_id: int) -> ShortVideo:
 
 def get_short_video_by_content_id(db: Session, content_id: int) -> ShortVideo:
     return db.query(ShortVideo).filter(ShortVideo.content_id == content_id).first()
+
+
+def get_ready_to_upload_short_video(db: Session) -> ShortVideo | None:
+    return (
+        db.query(ShortVideo)
+        .filter(
+            ShortVideo.status == ShortVideoStatus.NOT_STARTED,
+            ShortVideo.published_at == None,
+            ShortVideo.tags != None,
+            ShortVideo.description != None,
+        )
+        .first()
+    )
 
 
 def update_short_video(
@@ -85,4 +99,3 @@ def get_short_videos_by_status(db: Session, status: str, date: dt_date = None):
             )
             .all()
         )
-    

@@ -80,11 +80,11 @@ GoudShorts_AI/
     │   ├── cruds/        # CRUD operations helpers (content, short_video)
     │   └── models/       # SQLAlchemy models mapping schema (contents, short_videos)
     │
-    └── services/         # Orchestration & utility services
+    └── services/         # Orchestration & automation services
         ├── __init__.py
         ├── base.py       # Base service abstraction layer
-        ├── sript.py      # Main ScriptService coordinating script-to-publish steps (named sript.py)
-        ├── utility.py    # UtilityService running database cleanup and background pipeline automation
+        ├── script.py     # Main ScriptService coordinating script-to-publish steps
+        ├── automation.py # AutomationService running database cleanup and background pipeline automation
         ├── video_merge.py # MoviePy compiler (combines audio, mutes/loops video)
         └── integrations/ # Third-party API wrappers
             ├── elevenlabs.py       # ElevenLabs Voice synthesis integration
