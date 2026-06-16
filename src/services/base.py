@@ -1,5 +1,3 @@
-import os
-from utils.logger import app_logger as logger
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from src.db.dependencies import get_db

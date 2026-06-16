@@ -1,3 +1,4 @@
+from google import genai
 from src.services.base import BaseService
 from utils.logger import app_logger as logger
 from src.sql.cruds import content as content_crud, short_video as short_video_crud
@@ -32,7 +33,7 @@ class ScriptService(BaseService):
             logger.error(f"Failed to generate script: {str(e)}")
             raise Exception("Failed to generate script")
 
-    def generate_audio_from_content(self, content_id: int) -> dict:
+    def create_script_from_content(self, content_id: int) -> dict:
         content = content_crud.get_content(self.db, content_id)
         if not content:
             raise ValueError("Content not found")

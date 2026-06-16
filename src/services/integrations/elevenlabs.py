@@ -1,14 +1,12 @@
 import os
-import requests
 from src.services.base import BaseService
 from utils.logger import app_logger as logger
-from src.sql.cruds import content as content_crud
 from elevenlabs.client import ElevenLabs
 import uuid
 from io import BytesIO
 
 
-class AudioService(BaseService):
+class ElevenLabsService(BaseService):
     def __init__(self):
         super().__init__()
         self.api_key = os.getenv("ELEVENLABS_API_KEY")

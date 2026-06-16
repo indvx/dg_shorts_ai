@@ -1,13 +1,12 @@
 from src.services.base import BaseService
 from utils.logger import app_logger as logger
 from src.sql.cruds import content as content_crud, short_video as short_video_crud
-from src.enums import content as content_status, short_video as short_video_status
+from src.enums import short_video as short_video_status
 from src.services.script import ScriptService
 from src.services.video_merge import VideoMergeService
 from src.services.integrations.video_generator import VideoGeneratorService
 from fastapi import HTTPException
 import os
-import shutil
 
 
 class AutomationService(BaseService):
@@ -39,29 +38,29 @@ class AutomationService(BaseService):
 
     def upload_video_on_youtube(self):
         logger.info(f"Step 1/13: Started uploading video on youtube")
-        # try:
-        #     logger.info(f"Step 1/14: Generating topic")
-        #     topic = self.script_service.generate_topic()
-        #     logger.info(f"Step 2/14: Generated topic: '{topic}'")
-        # except Exception as e:
-        #     logger.error(f"Error 1/7: Internal server error: {str(e)}")
-        #     raise HTTPException(
-        #         status_code=500, detail=f"Internal server error: {str(e)}"
-        #     )
+        try:
+            logger.info(f"Step 1/14: Generating topic")
+            topic = self.script_service.generate_topic()
+            logger.info(f"Step 2/14: Generated topic: '{topic}'")
+        except Exception as e:
+            logger.error(f"Error 1/7: Internal server error: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Internal server error: {str(e)}"
+            )
 
-        # try:
-        #     logger.info(f"Step 3/14: Generating script: '{topic}'")
-        #     content = self.script_service.generate_script(topic)
-        #     logger.info(f"Step 4/14: Generated script: '{topic}'")
-        # except Exception as e:
-        #     logger.error(f"Error 2/7: Internal server error: {str(e)}")
-        #     raise HTTPException(
-        #         status_code=500, detail=f"Internal server error: {str(e)}"
-        #     )
+        try:
+            logger.info(f"Step 3/14: Generating script: '{topic}'")
+            content = self.script_service.generate_script(topic)
+            logger.info(f"Step 4/14: Generated script: '{topic}'")
+        except Exception as e:
+            logger.error(f"Error 2/7: Internal server error: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Internal server error: {str(e)}"
+            )
 
         try:
             logger.info(f"Step 5/14: Generating audio for script: '{topic}'")
-            self.script_service.create_script_from_content(content_id=content.id)
+            self.script_service.generate_audio_from_content(content_id=content.id)
             logger.info(f"Step 6/14: Generated audio for script: '{topic}'")
         except Exception as e:
             logger.error(f"Error 3/7: Internal server error: {str(e)}")
@@ -138,7 +137,7 @@ class AutomationService(BaseService):
                 status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
             )
 
-    def create_topic(self):
+    def create_content(self):
         try:
             logger.info(f"Step 1/3: Generating topic")
             topic = self.script_service.generate_topic()

@@ -3,7 +3,6 @@ from src.schemas.schema import GenerateScriptSchema
 from src.services.script import ScriptService
 from src.services.integrations.video_generator import VideoGeneratorService
 from src.services.video_merge import VideoMergeService
-from src.services.integrations.youtube import YouTubeService
 from utils.logger import app_logger
 
 router = APIRouter(prefix="/api/v1")
@@ -36,7 +35,7 @@ def generate_text_to_audio(content_id: int):
         app_logger.info("Admin API Request: Generating audio")
         if not content_id:
             raise HTTPException(status_code=400, detail="Content ID is required")
-        audio = ScriptService().create_script_from_content(content_id)
+        audio = ScriptService().generate_audio_from_content(content_id)
         app_logger.info(f"Generated audio for content_id: '{content_id}'")
         return {"message": audio}
     except HTTPException as e:

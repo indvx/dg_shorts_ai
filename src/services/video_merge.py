@@ -1,8 +1,6 @@
 from src.services.base import BaseService
 from utils.logger import app_logger as logger
 
-# from moviepy.video.io.VideoFileClip import VideoFileClip
-# from moviepy.audio.io.AudioFileClip import AudioFileClip
 from moviepy import VideoFileClip, AudioFileClip, concatenate_videoclips
 from src.sql.cruds import content as content_crud
 from src.sql.cruds import short_video as short_video_crud

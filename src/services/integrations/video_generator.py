@@ -1,4 +1,4 @@
-import os, uuid
+import os
 import requests
 from utils.logger import app_logger as logger
 from src.services.base import BaseService
