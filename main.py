@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from uvicorn import run
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.api.logs import router as log_router

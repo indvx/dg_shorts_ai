@@ -13,7 +13,7 @@ LOG_DIR = "logs"
 def get_current_logs():
     app_logger.info("Admin API Request: Fetching current live logs.")
     current_date = datetime.now().strftime("%Y-%m-%d")
-    current_log_file = os.path.join(LOG_DIR, f"app_{current_date}.log")
+    current_log_file = os.path.join(LOG_DIR, f"{current_date}.log")
 
     if not os.path.exists(current_log_file):
         app_logger.warning(f"Current log file not found on disk: {current_log_file}")
@@ -48,7 +48,7 @@ def get_filtered_logs(
             status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
         )
 
-    target_log_file = os.path.join(LOG_DIR, f"app_{date}.log")
+    target_log_file = os.path.join(LOG_DIR, f"{date}.log")
 
     if not os.path.exists(target_log_file):
         app_logger.warning(
