@@ -41,6 +41,7 @@ class ScriptService(BaseService):
             ContentStatus.AUDIO_GENERATED,
             ContentStatus.VIDEO_GENERATED,
             ContentStatus.MERGED,
+            ContentStatus.ERROR,
         ]:
             raise ValueError("Content already processed.")
 
@@ -126,6 +127,13 @@ class ScriptService(BaseService):
                     "youtube_video_path": f"https://youtu.be/{response}",
                     "status": ShortVideoStatus.PUBLISHED,
                     "published_at": datetime.now(UTC),
+                },
+            )
+            content_crud.update_content(
+                self.db,
+                short_video.content,
+                {
+                    "status": ContentStatus.VIDEO_PUBLISHED,
                 },
             )
             return response

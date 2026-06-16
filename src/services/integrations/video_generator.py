@@ -21,7 +21,7 @@ class VideoGeneratorService(BaseService):
 
         search_query = content.title
         headers = {"Authorization": self.api_key}
-        params = {"query": search_query, "per_page": 5, "orientation": "portrait"}
+        params = {"query": search_query, "per_page": 2, "orientation": "portrait"}
 
         try:
             logger.info(f"Searching Pexels for vertical stock videos: '{search_query}'")
@@ -58,6 +58,13 @@ class VideoGeneratorService(BaseService):
             return download_path
 
         except Exception as e:
+            content_crud.update_content(
+                self.db,
+                content,
+                {
+                    "status": ContentStatus.ERROR,
+                },
+            )
             logger.error(f"Failed to fetch video from Pexels API: {str(e)}")
             raise e
 

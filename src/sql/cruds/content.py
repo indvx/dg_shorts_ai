@@ -1,5 +1,6 @@
 from src.sql.models.content import Content
 from sqlalchemy.orm import Session
+from src.enums.content import ContentStatus
 
 
 def create_content(db: Session, content_data: dict):
@@ -45,3 +46,28 @@ def delete_content(db: Session, content: Content) -> bool:
 
 def get_contents_by_status(db: Session, status: str):
     return db.query(Content).filter(Content.status == status).all()
+
+
+def get_ready_to_process_content(
+    db: Session,
+    target_status: list[str] = [],
+    excluded: bool = False,
+):
+    if excluded:
+        return (
+            db.query(Content)
+            .filter(
+                Content.status.notin_(target_status),
+                Content.status != ContentStatus.VIDEO_PUBLISHED,
+            )
+            .first()
+        )
+    else:
+        return (
+            db.query(Content)
+            .filter(
+                Content.status.in_(target_status),
+                Content.status != ContentStatus.VIDEO_PUBLISHED,
+            )
+            .first()
+        )

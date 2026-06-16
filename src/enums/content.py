@@ -6,3 +6,5 @@ class ContentStatus(str, Enum):
     AUDIO_GENERATED = "audio_generated"
     VIDEO_GENERATED = "video_generated"
     MERGED = "merged"
+    VIDEO_PUBLISHED = "video_published"
+    ERROR = "error"

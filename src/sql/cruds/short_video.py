@@ -39,6 +39,17 @@ def get_ready_to_upload_short_video(db: Session) -> ShortVideo | None:
         .first()
     )
 
+def get_ready_to_metadata_short_video(db: Session) -> ShortVideo | None:
+    return (
+        db.query(ShortVideo)
+        .filter(
+            ShortVideo.status == ShortVideoStatus.NOT_STARTED,
+            ShortVideo.tags == None,
+            ShortVideo.youtube_video_path == None,
+        )
+        .first()
+    )
+
 
 def update_short_video(
     db: Session, short_video: ShortVideo, short_video_data: dict

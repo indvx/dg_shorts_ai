@@ -19,10 +19,13 @@ scheduler = BackgroundScheduler()
 @app.on_event("startup")
 def startup_event():
     logger.info("Application started")
-    # scheduler.add_job(automation_service.clean_uploaded_video, "interval", seconds=10)
-    # scheduler.add_job(automation_service.upload_video_on_youtube, "interval", minutes=30)
-    # scheduler.add_job(automation_service.upload_tagged_video, "interval", minutes=1)
+    # scheduler.add_job(automation_service.clean_uploaded_video, "interval", minutes=2)
     # scheduler.add_job(automation_service.create_content, "interval", minutes=1)
+    # scheduler.add_job(automation_service.create_audio, "interval", minutes=1)
+    scheduler.add_job(automation_service.fetch_and_generate_video, "interval", minutes=1)
+    scheduler.add_job(automation_service.merge_video_and_audio, "interval", minutes=4)
+    scheduler.add_job(automation_service.update_video_metadata, "interval", minutes=5)
+    scheduler.add_job(automation_service.upload_video_on_youtube, "interval", hours=4)
     scheduler.start()
 
 
