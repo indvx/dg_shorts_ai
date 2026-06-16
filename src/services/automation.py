@@ -151,13 +151,11 @@ class AutomationService(BaseService):
         logger.info(f"Starting to merge video and audio")
         try:
             logger.info(f"Step 1/2: Getting content")
-            excluded_statuses = [
+            target_statuses = [
                 content_status.ContentStatus.VIDEO_GENERATED,
-                content_status.ContentStatus.MERGED,
-                content_status.ContentStatus.ERROR,
             ]
             content = content_crud.get_ready_to_process_content(
-                self.db, excluded_statuses, excluded=True
+                self.db, target_statuses, excluded=False
             )
             logger.info(f"Step 2/2: Got content")
         except Exception as e:

@@ -21,13 +21,9 @@ class VideoMergeService(BaseService):
             logger.error(f"Content with id {content_id} not found.")
             raise ValueError(f"Content with id {content_id} not found.")
 
-        if content.status not in [
-            ContentStatus.VIDEO_GENERATED,
-            ContentStatus.MERGED,
-            ContentStatus.VIDEO_PUBLISHED,
-        ]:
+        if content.status != ContentStatus.VIDEO_GENERATED:
             logger.error(
-                f"Content with id {content_id} is not in video generated state."
+                f"Content with id {content_id} is not in video generated state: {content.status}"
             )
             raise ValueError(
                 f"Content with id {content_id} is not in video generated state."
