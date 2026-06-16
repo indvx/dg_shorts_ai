@@ -17,6 +17,7 @@ class AutomationService(BaseService):
         self.video_generator_service = VideoGeneratorService()
 
     def clean_uploaded_video(self):
+        logger.info(f"Starting to clean uploaded videos")
         try:
             videos = short_video_crud.get_short_videos_by_status(
                 self.db, short_video_status.ShortVideoStatus.PUBLISHED
@@ -37,6 +38,7 @@ class AutomationService(BaseService):
             )
 
     def upload_video_on_youtube(self):
+        logger.info(f"Starting to upload video to youtube")
         try:
             logger.info(f"Step 1/2: Getting video content")
             short_video = short_video_crud.get_ready_to_upload_short_video(self.db)
@@ -48,6 +50,9 @@ class AutomationService(BaseService):
             )
 
         try:
+            if not short_video:
+                logger.info(f"No short video found to process")
+                return
             logger.info(f"Step 3/4: Uploading video to youtube")
             self.script_service.upload_video_to_youtube(short_video.id)
             logger.info(f"Step 4/4: Uploaded video to youtube")
@@ -58,6 +63,7 @@ class AutomationService(BaseService):
             )
 
     def create_content(self):
+        logger.info(f"Starting to create content")
         try:
             logger.info(f"Step 1/3: Generating topic")
             topic = self.script_service.generate_topic()
@@ -79,6 +85,7 @@ class AutomationService(BaseService):
             )
 
     def create_audio(self):
+        logger.info(f"Starting to create audio")
         try:
             logger.info(f"Step 1/2: Getting content")
             excluded_statuses = [
@@ -98,9 +105,8 @@ class AutomationService(BaseService):
 
         try:
             if not content:
-                raise HTTPException(
-                    status_code=404, detail=f"No content found to process"
-                )
+                logger.info(f"No content found to process")
+                return
             logger.info(f"Step 3/4: Generating audio for content")
             self.script_service.generate_audio_from_content(content_id=content.id)
             logger.info(f"Step 4/4: Generated audio for content")
@@ -111,6 +117,7 @@ class AutomationService(BaseService):
             )
 
     def fetch_and_generate_video(self):
+        logger.info(f"Starting to fetch and generate video")
         try:
             target_statuses = [content_status.ContentStatus.AUDIO_GENERATED]
             logger.info(f"Step 1/2: Getting content")
@@ -126,9 +133,8 @@ class AutomationService(BaseService):
 
         try:
             if not content:
-                raise HTTPException(
-                    status_code=404, detail=f"No content found to process"
-                )
+                logger.info(f"No content found to process")
+                return
             logger.info(f"Step 3/4: Fetching and generating video for content")
             self.video_generator_service.fetch_and_download_background(
                 content_id=content.id
@@ -141,6 +147,7 @@ class AutomationService(BaseService):
             )
 
     def merge_video_and_audio(self):
+        logger.info(f"Starting to merge video and audio")
         try:
             logger.info(f"Step 1/2: Getting content")
             excluded_statuses = [
@@ -159,9 +166,8 @@ class AutomationService(BaseService):
 
         try:
             if not content:
-                raise HTTPException(
-                    status_code=404, detail=f"No content found to process"
-                )
+                logger.info(f"No content found to process")
+                return
             logger.info(f"Step 3/4: Merging video and audio for content")
             self.video_merge_service.merge_and_mute_video(content_id=content.id)
             logger.info(f"Step 4/4: Merged video and audio for content")
@@ -172,6 +178,7 @@ class AutomationService(BaseService):
             )
 
     def update_video_metadata(self):
+        logger.info(f"Starting to update video metadata")
         try:
             logger.info(f"Step 1/2: Getting content")
             short_video = short_video_crud.get_ready_to_metadata_short_video(self.db)
@@ -184,9 +191,8 @@ class AutomationService(BaseService):
 
         try:
             if not short_video:
-                raise HTTPException(
-                    status_code=404, detail=f"No short video found to process"
-                )
+                logger.info(f"No short video found to process")
+                return
             logger.info(f"Step 3/4: Updating video metadata for content")
             self.script_service.update_video_content_metadata(short_video.content_id)
             logger.info(f"Step 4/4: Updated video metadata for content")
