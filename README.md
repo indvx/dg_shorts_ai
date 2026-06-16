@@ -1,16 +1,20 @@
 # GoudShorts AI — Enterprise YouTube Shorts Automation Backend Engine 🚀
 
-GoudShorts AI is a production-ready, asynchronous, object-oriented YouTube Shorts generation and distribution platform. Designed with modularity, scalability, and error-resilience, this platform automates the entire content creation lifecycle—converting a text topic into a fully formatted, looped, sound-isolated, and SEO-optimized vertical video posted directly to YouTube.
+GoudShorts AI is a production-ready, asynchronous, object-oriented YouTube Shorts generation and distribution platform. Designed with modularity, scalability, and error-resilience, this platform automates the entire content creation lifecycle—converting dynamic topics into fully formatted, looped, sound-isolated, and SEO-optimized vertical videos posted directly to YouTube.
 
 ---
 
-## ⚙️ Architecture & Workflow
+## ⚙️ Architecture & Core Workflow
+
+The system is designed with a decoupled architecture. The background orchestrator stages the creation of each video step-by-step to handle rate limits, API failures, and resource usage efficiently.
+
+### System Components Flow
 
 ```mermaid
 graph TD
-    A[Client API Request] -->|Start Job| B(FastAPI Router / Route Gateway)
+    A[Client API Request / APScheduler Trigger] -->|Start Job| B(FastAPI Router / Route Gateway)
     B --> C[Script Service / Coordinator]
-    C -->|1. Generate Script & Prompts| D[LLM Service <br> Gemini-2.5-Flash]
+    C -->|1. Generate Script & Prompts| D[LLM Service <br> Gemini or OpenAI]
     C -->|2. Synthesize Narrator Voice| E[ElevenLabs Voice Engine]
     C -->|3. Fetch Background Loops| F[Pexels Video Generator Service]
     C -->|4. Dynamic Render & Compile| G[Video Merge Service]
@@ -20,7 +24,52 @@ graph TD
     J -->|Complete| K[Live YouTube Short Post]
 ```
 
-In addition to manual HTTP step-by-step triggers, the application features an automatic, scheduled background orchestrator (`APScheduler`) configured in `main.py` that periodically runs the video generation and publication workflow and performs automated disk cleanups of published videos.
+---
+
+## 💾 Database Schema
+
+The persistence layer uses a PostgreSQL database managed via SQLAlchemy and Alembic. Below is the schema layout mapping the content creation state:
+
+### 1. `contents` Table
+This table stores the text transcripts and intermediate media paths.
+* **`id`** (`Integer`, Primary Key, Index): Unique ID of the content job.
+* **`title`** (`String(255)`, Not Null): Generated topic or user-provided seed.
+* **`content`** (`Text`, Not Null): Synthesized narration script (typically Hindi).
+* **`voice_id`** (`String(255)`, Nullable, Default: `JBFqnCBsd6RMkjVDRZzb`): ElevenLabs voice identifier.
+* **`status`** (`Enum(ContentStatus)`, Default: `DRAFT`): Current workflow state.
+* **`audio_path`** (`String(255)`, Nullable): Path to the generated speech MP3 file.
+* **`video_path`** (`String(255)`, Nullable): Path to the downloaded Pexels stock video.
+* **`created_at`** / **`updated_at`** (`DateTime`): Operational audit timestamps.
+
+### 2. `short_videos` Table
+This table maps compiled video artifacts and their publication metadata.
+* **`id`** (`Integer`, Primary Key, Index): Unique ID of the short video record.
+* **`content_id`** (`Integer`, ForeignKey `contents.id`, Not Null): Associated script reference.
+* **`title`** (`String`): Catchy, click-worthy metadata title.
+* **`description`** (`Text`): SEO-optimized YouTube description.
+* **`tags`** (`String`): Comma-separated search tags.
+* **`output_path`** (`String`): Local path to the final rendered video MP4.
+* **`youtube_video_path`** (`String`, Nullable): Direct URL to the live YouTube video.
+* **`status`** (`Enum(ShortVideoStatus)`, Default: `NOT_STARTED`): Upload staging status.
+* **`created_at`** / **`updated_at`** (`DateTime`): Operational audit timestamps.
+* **`published_at`** (`DateTime`, Nullable): Actual YouTube publication timestamp.
+
+### 3. Workflow State Enums
+
+* **`ContentStatus`**:
+  * `draft`: Initial script generated.
+  * `audio_generated`: Text-to-speech audio synthesized successfully.
+  * `video_generated`: Background video sourced and downloaded.
+  * `merged`: Audio track overlaid onto the stock video and rendered.
+  * `video_published`: Video upload finalized and live on YouTube.
+  * `error`: Internal pipeline failure.
+
+* **`ShortVideoStatus`**:
+  * `not_started`: Initial state upon render compilation.
+  * `processing`: Upload in progress.
+  * `completed`: Video loaded to YouTube servers.
+  * `published`: Video actively set to public.
+  * `failed`: YouTube upload aborted.
 
 ---
 
@@ -51,11 +100,11 @@ GoudShorts_AI/
 │   └── token.pickle      # Generated OAuth access/refresh token pickle
 │
 ├── utils/                # Utility modules
-│   └── logger.py         # Singleton central logging engine
+│   └── logger.py         # Central logging engine configuration
 │
 └── src/
     ├── __init__.py
-    ├── orchestrator.py   # Legacy/standalone YouTube upload orchestration helper
+    ├── orchestrator.py   # Standing helper orchestrator
     │
     ├── api/              # HTTP Routing & Handlers
     │   ├── __init__.py
@@ -69,8 +118,8 @@ GoudShorts_AI/
     │   └── session.py    # Database connection configuration
     │
     ├── enums/            # State machine state enums
-    │   ├── content.py    # ContentStatus enum (DRAFT, AUDIO_GENERATED, etc.)
-    │   └── short_video.py # ShortVideoStatus enum (NOT_STARTED, PUBLISHED, etc.)
+    │   ├── content.py    # ContentStatus enum (draft, audio_generated, etc.)
+    │   └── short_video.py # ShortVideoStatus enum (not_started, published, etc.)
     │
     ├── schemas/          # Strict Pydantic model payload validations
     │   ├── __init__.py
@@ -88,7 +137,7 @@ GoudShorts_AI/
         ├── video_merge.py # MoviePy compiler (combines audio, mutes/loops video)
         └── integrations/ # Third-party API wrappers
             ├── elevenlabs.py       # ElevenLabs Voice synthesis integration
-            ├── llm.py              # Gemini AI text script and metadata generator (google-genai SDK)
+            ├── llm.py              # LLM wrapper (Gemini and OpenAI support)
             ├── video_generator.py  # Pexels video fetcher and downloader
             └── youtube.py          # YouTube OAuth authentication & upload wrapper
 ```
@@ -110,6 +159,7 @@ sqlalchemy==2.0.50
 apscheduler==3.11.2
 python-dotenv==1.2.2
 google-genai==2.8.0
+openai==2.41.1
 elevenlabs==2.52.0
 moviepy==2.2.1
 requests==2.34.2
@@ -137,14 +187,21 @@ DB_USER='postgres'
 DB_PASSWORD='your_secure_db_password'
 DB_NAME='dgshortai'
 
-# Google Client Credentials paths
-GOOGLE_CLINT_SECRET="secret/client_secret.json"
-GOOGLE_TOKEN_PICKEL="secret/token.pickle"
+# AI Provider Configuration (Choose 'gemini' or 'openai')
+AI_PROVIDER_NAME='gemini'
+AI_MODEL_NAME='gemini-2.5-flash'
+AI_API_KEY='your_api_key_here'
 
-# AI Services API Keys
-GEMINI_API_KEY="AIzaSyAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-ELEVENLABS_API_KEY="el_sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-PEXELS_API_KEY="5634b2457xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# ElevenLabs Speech Synthesis API Key
+ELEVENLABS_API_KEY='your_elevenlabs_api_key_here'
+VOICE_ID='JBFqnCBsd6RMkjVDRZzb'
+
+# Pexels Stock Video API Key
+PEXELS_API_KEY='your_pexels_api_key_here'
+
+# Google Client Credentials paths
+GOOGLE_CLINT_SECRET='secret/client_secret.json'
+GOOGLE_TOKEN_PICKEL='secret/token.pickle'
 ```
 
 ---
@@ -159,12 +216,12 @@ alembic upgrade head
 
 ---
 
-## 🤖 Step 3: Google Gemini (Script & Metadata Engine) Setup
+## 🤖 Step 3: LLM Integration (Gemini & OpenAI) Setup
 
-Our `LLMService` utilizes the new Google GenAI SDK (`google-genai` package) with the `gemini-2.5-flash` model for Hindi script generation and structured SEO metadata extraction.
+The `LLMService` wrapper supports both the modern Google GenAI SDK (`google-genai` package) with the `gemini-2.5-flash` model and the OpenAI SDK (`openai` package) with `gpt-3.5-turbo` (or other standard models).
 
-1. Open [Google AI Studio](https://aistudio.google.com/).
-2. Click **Get API Key** and copy the token into the `GEMINI_API_KEY` field in your `.env`.
+1. **For Gemini:** Set `AI_PROVIDER_NAME=gemini` and your `AI_API_KEY` obtained from [Google AI Studio](https://aistudio.google.com/).
+2. **For OpenAI:** Set `AI_PROVIDER_NAME=openai`, choose an `AI_MODEL_NAME` (e.g. `gpt-3.5-turbo` or `gpt-4o-mini`), and set your OpenAI `AI_API_KEY`.
 
 ---
 
@@ -175,7 +232,7 @@ ElevenLabs provides high-quality voice synthesis for storytelling.
 1. Log into your dashboard at [ElevenLabs.io](https://elevenlabs.io/).
 2. Go to your Profile settings on the bottom left ➔ select **Profile + API Keys**.
 3. Copy your API Key and paste it into the `ELEVENLABS_API_KEY` field in your `.env`.
-4. The default voice id used is `JBFqnCBsd6RMkjVDRZzb` (configured in the database and service).
+4. Configure the optional `VOICE_ID` in `.env` if desired (the system defaults to `"JBFqnCBsd6RMkjVDRZzb"`).
 
 ---
 
@@ -246,11 +303,83 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser to
 | **GET** | `/logs/current` | Fetches the last 500 lines of today's live execution log. | - |
 | **GET** | `/logs/filter` | Fetches historical log file archives. | `?date=YYYY-MM-DD` |
 
-### 3. Automatic Background Task Scheduling
+### 3. Progressive Background Task Scheduling (APScheduler)
 
-The application initializes an `APScheduler` background runner when the FastAPI server starts:
-- **Automation Pipeline (`upload_video_on_youtube`):** Runs every **10 minutes** to automatically trigger the entire pipeline from end-to-end (Topic: `"Major Events of the 20th Century"`).
-- **Cleanup Job (`clean_uploaded_video`):** Runs every **10 seconds** to scan the database for successfully published videos. It removes the local video, audio, and output files from the disk and purges the associated database records to avoid storage clutter.
+When the FastAPI server launches, `APScheduler` initializes background runners in `main.py` that drive a decoupled, step-by-step queue pipeline. This prevents thread blocks and ensures resilient media rendering:
+
+```mermaid
+sequenceDiagram
+    participant S as APScheduler (main.py)
+    participant DB as PostgreSQL
+    participant LLM as LLM Service (Gemini/OpenAI)
+    participant EL as ElevenLabs
+    participant P as Pexels
+    participant MV as MoviePy
+    participant YT as YouTube API
+    
+    rect rgb(240, 240, 255)
+    note right of S: Every 20 mins: create_content
+    S->>LLM: Generate viral topic & script
+    LLM-->>S: Title & script (Hindi text)
+    S->>DB: Save Content as DRAFT
+    end
+
+    rect rgb(240, 255, 240)
+    note right of S: Every 25 mins: create_audio
+    S->>DB: Fetch DRAFT Content
+    S->>EL: Synthesize script to speech
+    EL-->>S: .mp3 file path
+    S->>DB: Update to AUDIO_GENERATED
+    end
+
+    rect rgb(255, 240, 240)
+    note right of S: Every 30 mins: fetch_and_generate_video
+    S->>DB: Fetch AUDIO_GENERATED Content
+    S->>P: Fetch portrait stock video matching topic
+    P-->>S: .mp4 template path
+    S->>DB: Update to VIDEO_GENERATED
+    end
+
+    rect rgb(255, 255, 240)
+    note right of S: Every 35 mins: merge_video_and_audio
+    S->>DB: Fetch VIDEO_GENERATED Content
+    S->>MV: Loop stock video & overlay audio
+    MV-->>S: Output .mp4 path
+    S->>DB: Create ShortVideo (NOT_STARTED) & Content (MERGED)
+    end
+
+    rect rgb(240, 255, 255)
+    note right of S: Every 40 mins: update_video_metadata
+    S->>DB: Fetch ShortVideo (NOT_STARTED)
+    S->>LLM: Generate Title, Description, and Tags
+    LLM-->>S: Structured JSON Metadata
+    S->>DB: Save metadata
+    end
+
+    rect rgb(255, 240, 255)
+    note right of S: Cron (0, 5, 10, 15, 20:00): upload_video_on_youtube
+    S->>DB: Fetch ready ShortVideo
+    S->>YT: Upload vertical short with metadata
+    YT-->>S: Video ID response
+    S->>DB: Update to PUBLISHED / VIDEO_PUBLISHED
+    end
+
+    rect rgb(240, 240, 240)
+    note right of S: Cron (01:30, 06:30, 11:30, 16:30, 21:30): clean_uploaded_video
+    S->>DB: Fetch PUBLISHED ShortVideos
+    S->>S: Delete local .mp3 and .mp4 files
+    S->>DB: Delete Content & ShortVideo records
+    end
+```
+
+* **Script Content Generation (`create_content`):** Runs every **20 minutes**. Selects a viral topic automatically, generates a Hindi script using the LLM Service, and inserts a `DRAFT` status content record.
+* **Speech Synthesis (`create_audio`):** Runs every **25 minutes**. Pulls pending `DRAFT` contents and invokes ElevenLabs text-to-speech to save the voice narration audio locally under `data/audio/` (transitions state to `audio_generated`).
+* **Background Video Sourcing (`fetch_and_generate_video`):** Runs every **30 minutes**. Identifies contents with generated audio, searches Pexels for matching portrait stock videos, downloads the file to `data/video/`, and shifts state to `video_generated`.
+* **Video Compilation & Overlay (`merge_video_and_audio`):** Runs every **35 minutes**. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track, write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `merged`).
+* **Metadata Enhancement (`update_video_metadata`):** Runs every **40 minutes**. Fetches `NOT_STARTED` short videos and prompts the LLM to generate search-optimized Titles, Descriptions, and Hashtag Tag list arrays.
+* **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs via a cron schedule at hours **0, 5, 10, 15, and 20** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
+* **Local Workspace Cleanup (`clean_uploaded_video`):** Runs via cron daily at **00:30**, and during intermediate phases at **01:30, 06:30, 11:30, 16:30, and 21:30** to delete uploaded local files (`audio/`, `video/`, and final `output/`) and purge database records.
+* **Log Rotation (`clean_last_7_days_log_file`):** Runs every **1 minute** (configured interval) to clean archival log files in the `logs/` directory older than 7 days.
 
 ---
 
