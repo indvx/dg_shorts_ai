@@ -31,7 +31,7 @@ class GoudShortsLogger:
 
     def __configure_handlers(self):
         current_date = datetime.now().strftime("%Y-%m-%d")
-        log_file_path = os.path.join(self.log_dir, f"app_{current_date}.log")
+        log_file_path = os.path.join(self.log_dir, f"{current_date}.log")
 
         log_format = logging.Formatter(
             "[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d] ➔ %(message)s",

@@ -7,7 +7,7 @@ from src.services.video_merge import VideoMergeService
 from src.services.integrations.video_generator import VideoGeneratorService
 from fastapi import HTTPException
 import os
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 
 
 class AutomationService(BaseService):
@@ -37,35 +37,28 @@ class AutomationService(BaseService):
             raise HTTPException(
                 status_code=500, detail=f"Internal server error: {str(e)}"
             )
-    
+
     def clean_last_7_days_log_file(self):
-        logger.info(f"Starting to clean last 7 days log file")
+        logger.info("Starting log cleanup")
+        log_dir = "logs"
         try:
-            logger.info(f"Step 1/2: Getting log files")
-            log_file_path = "logs/"
-            log_files = os.listdir(log_file_path)
-            logger.info(f"Step 2/2: Got log files: {log_files}")
+            cutoff = datetime.now(UTC).date() - timedelta(days=7)
+            for log_file in os.listdir(log_dir):
+                if not log_file.endswith(".log"):
+                    continue
+                try:
+                    file_date = datetime.strptime(log_file[:-4], "%Y-%m-%d").date()
+                    if file_date < cutoff:
+                        full_path = os.path.join(log_dir, log_file)
+                        logger.info(f"Deleting {full_path}")
+                        os.remove(full_path)
+                        logger.info(f"Deleted {full_path}")
+                except ValueError:
+                    logger.warning(f"Invalid log filename: {log_file}")
         except Exception as e:
-            logger.error(f"Error 1/2: Internal server error: {str(e)}")
+            logger.exception("Failed to clean logs")
             raise HTTPException(
                 status_code=500, detail=f"Internal server error: {str(e)}"
-            )
-
-        try:
-            logger.info(f"Step 3/4: Cleaning log files")
-            for log_file in log_files:
-                if log_file.endswith(".log"):
-                    logger.info(f"Step 3/4: Processing log file: {log_file}")
-                    full_log_file_path = os.path.join(log_file_path, log_file)
-                    file_creation_date = datetime.fromtimestamp(os.path.getctime(full_log_file_path), UTC)
-                    if (datetime.now(UTC) - file_creation_date).days > 7:
-                        os.remove(full_log_file_path)
-                        logger.info(f"Cleaned log file: {full_log_file_path}")
-            logger.info(f"Step 4/4: Cleaned last 7 days log file")
-        except Exception as e:
-            logger.error(f"Error 2/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
             )
 
     def upload_video_on_youtube(self):

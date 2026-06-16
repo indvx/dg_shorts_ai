@@ -20,7 +20,7 @@ scheduler = BackgroundScheduler()
 def startup_event():
     logger.info("Application started")
     
-    # Clean last 7 days log file every 1 hour
+    # Clean last 7 days log file every 10 minutes
     scheduler.add_job(automation_service.clean_last_7_days_log_file, "interval", minutes=1, max_instances=1)
     # Clean uploaded videos at 00:30
     scheduler.add_job(automation_service.clean_uploaded_video, "cron", hour=0, minute=30, max_instances=1)
