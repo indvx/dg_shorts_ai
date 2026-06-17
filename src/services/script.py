@@ -65,11 +65,9 @@ class ScriptService(BaseService):
             "status": ContentStatus.AUDIO_GENERATED,
         }
 
-    def update_video_content_metadata(self, content_id: int):
-        logger.info(f"Updating video path in database for content: {content_id}")
-        short_video = short_video_crud.get_short_video_by_content_id(
-            self.db, content_id
-        )
+    def update_video_content_metadata(self, video_id: int):
+        logger.info(f"Updating video path in database for content: {video_id}")
+        short_video = short_video_crud.get_short_video(self.db, video_id)
         if not short_video:
             raise ValueError("Short video not found for provided content id")
 

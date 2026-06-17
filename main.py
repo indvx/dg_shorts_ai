@@ -1,15 +1,19 @@
 from fastapi import FastAPI
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from src.api.logs import router as log_router
-from src.api.routes import router as api_router
+from src.api.v1 import logs, content, video
 from src.services.automation import AutomationService
 from utils.logger import logger
 
-app = FastAPI(title="DGShorts AI Backend")
+app = FastAPI(
+    title="DGShorts AI Backend",
+    description="API for DGShorts AI",
+    version="1.0.0",
+)
 
-app.include_router(log_router)
-app.include_router(api_router)
+app.include_router(logs.router, prefix="/api")
+app.include_router(content.router, prefix="/api")
+app.include_router(video.router, prefix="/api")
 
 automation_service = AutomationService()
 scheduler = BackgroundScheduler()

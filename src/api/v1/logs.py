@@ -4,12 +4,16 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import PlainTextResponse
 from utils.logger import logger
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/v1/logs",
+    tags=["Logs"],
+    responses={404: {"description": "Log not found"}},
+)
 
 LOG_DIR = "logs"
 
 
-@router.get("/logs/current", response_class=PlainTextResponse)
+@router.get("/current", response_class=PlainTextResponse)
 def get_current_logs():
     logger.info("Admin API Request: Fetching current live logs.")
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -30,7 +34,7 @@ def get_current_logs():
         )
 
 
-@router.get("/logs/filter", response_class=PlainTextResponse)
+@router.get("/filter", response_class=PlainTextResponse)
 def get_filtered_logs(
     date: str = Query(
         ..., description="Target date format in YYYY-MM-DD (e.g., 2026-06-12)"

@@ -218,7 +218,7 @@ class AutomationService(BaseService):
                 logger.info(f"No short video found to process")
                 return
             logger.info(f"Step 3/4: Updating video metadata for content")
-            self.script_service.update_video_content_metadata(short_video.content_id)
+            self.script_service.update_video_content_metadata(short_video.id)
             logger.info(f"Step 4/4: Updated video metadata for content")
         except Exception as e:
             logger.error(f"Error 2/2: Internal server error: {str(e)}")
