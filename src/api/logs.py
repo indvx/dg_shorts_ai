@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import PlainTextResponse
-from utils.logger import app_logger
+from utils.logger import logger
 
 router = APIRouter()
 
@@ -11,12 +11,12 @@ LOG_DIR = "logs"
 
 @router.get("/logs/current", response_class=PlainTextResponse)
 def get_current_logs():
-    app_logger.info("Admin API Request: Fetching current live logs.")
+    logger.info("Admin API Request: Fetching current live logs.")
     current_date = datetime.now().strftime("%Y-%m-%d")
     current_log_file = os.path.join(LOG_DIR, f"{current_date}.log")
 
     if not os.path.exists(current_log_file):
-        app_logger.warning(f"Current log file not found on disk: {current_log_file}")
+        logger.warning(f"Current log file not found on disk: {current_log_file}")
         return "No logs recorded for today yet. App is running clean!"
 
     try:
@@ -24,7 +24,7 @@ def get_current_logs():
             lines = file.readlines()
             return "".join(lines[-500:])
     except Exception as e:
-        app_logger.error(f"Failed to read current log file: {str(e)}")
+        logger.error(f"Failed to read current log file: {str(e)}")
         raise HTTPException(
             status_code=500, detail="Internal server error reading logs."
         )
@@ -36,12 +36,12 @@ def get_filtered_logs(
         ..., description="Target date format in YYYY-MM-DD (e.g., 2026-06-12)"
     )
 ):
-    app_logger.info(f"Admin API Request: Filtering archival logs for date: {date}")
+    logger.info(f"Admin API Request: Filtering archival logs for date: {date}")
 
     try:
         datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
-        app_logger.warning(
+        logger.warning(
             f"Refused log request. Invalid date format parameter parsed: {date}"
         )
         raise HTTPException(
@@ -51,7 +51,7 @@ def get_filtered_logs(
     target_log_file = os.path.join(LOG_DIR, f"{date}.log")
 
     if not os.path.exists(target_log_file):
-        app_logger.warning(
+        logger.warning(
             f"Archive lookup failed. No log file records exist for date: {date}"
         )
         raise HTTPException(
@@ -62,5 +62,5 @@ def get_filtered_logs(
         with open(target_log_file, "r", encoding="utf-8") as file:
             return file.read()
     except Exception as e:
-        app_logger.error(f"Error indexing log profile repository: {str(e)}")
+        logger.error(f"Error indexing log profile repository: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching archival records.")

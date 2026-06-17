@@ -4,28 +4,16 @@ import sys
 from datetime import datetime
 
 
-class GoudShortsLogger:
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super(GoudShortsLogger, cls).__new__(cls, *args, **kwargs)
-            cls._instance.__initialized = False
-        return cls._instance
-
+class DGShortsLogger:
     def __init__(self, log_directory: str = "logs", log_level: int = logging.INFO):
-        if self.__initialized:
-            return
-
         self.log_dir = log_directory
         self.log_level = log_level
         os.makedirs(self.log_dir, exist_ok=True)
 
-        self.logger = logging.getLogger("GoudShortsAI")
+        self.logger = logging.getLogger("DGShortsAI")
         self.logger.setLevel(self.log_level)
 
         self.__configure_handlers()
-        self.__initialized = True
 
         self.logger.info("Logger initialized successfully.")
 
@@ -53,4 +41,4 @@ class GoudShortsLogger:
         return self.logger
 
 
-app_logger = GoudShortsLogger().get_logger()
+logger = DGShortsLogger().get_logger()

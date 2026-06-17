@@ -1,6 +1,6 @@
 import os
 from src.services.base import BaseService
-from utils.logger import app_logger as logger
+from utils.logger import logger
 from elevenlabs.client import ElevenLabs
 import uuid
 from io import BytesIO

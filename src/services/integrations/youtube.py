@@ -4,7 +4,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from utils.logger import app_logger as logger
+from utils.logger import logger
 from src.services.base import BaseService
 
 class YouTubeService(BaseService):

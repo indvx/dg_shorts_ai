@@ -7,7 +7,7 @@ from google import genai
 from openai import OpenAI
 
 from src.services.base import BaseService
-from utils.logger import app_logger as logger
+from utils.logger import logger
 import os
 
 

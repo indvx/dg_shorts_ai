@@ -4,9 +4,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from src.api.logs import router as log_router
 from src.api.routes import router as api_router
 from src.services.automation import AutomationService
-from utils.logger import app_logger as logger
+from utils.logger import logger
 
-app = FastAPI(title="GoudShorts AI Backend")
+app = FastAPI(title="DGShorts AI Backend")
 
 app.include_router(log_router)
 app.include_router(api_router)

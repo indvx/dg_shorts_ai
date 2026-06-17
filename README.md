@@ -1,6 +1,6 @@
-# GoudShorts AI — Enterprise YouTube Shorts Automation Backend Engine 🚀
+# DGShorts AI — Enterprise YouTube Shorts Automation Backend Engine 🚀
 
-GoudShorts AI is a production-ready, asynchronous, object-oriented YouTube Shorts generation and distribution platform. Designed with modularity, scalability, and error-resilience, this platform automates the entire content creation lifecycle—converting dynamic topics into fully formatted, looped, sound-isolated, and SEO-optimized vertical videos posted directly to YouTube.
+DGShorts AI is a production-ready, asynchronous, object-oriented YouTube Shorts generation and distribution platform. Designed with modularity, scalability, and error-resilience, this platform automates the entire content creation lifecycle—converting dynamic topics into fully formatted, looped, sound-isolated, and SEO-optimized vertical videos posted directly to YouTube.
 
 ---
 
@@ -76,7 +76,7 @@ This table maps compiled video artifacts and their publication metadata.
 ## 📂 Complete Project Directory Structure
 
 ```text
-GoudShorts_AI/
+dg_shorts_ai/
 ├── .env                  # Environment secrets (DO NOT COMMIT)
 ├── .env-example          # Environment variables template
 ├── .gitignore            # Excludes temporary cache, binaries, and local tokens from Git
@@ -257,7 +257,7 @@ To upload videos without manual intervention, Google requires desktop OAuth veri
 
 ### A. Google Cloud Console Configuration
 1. Log into [Google Cloud Console](https://console.cloud.google.com/) using the Gmail account tied to your YouTube channel.
-2. Select **New Project** from the top dropdown. Name it `GoudShorts AI`.
+2. Select **New Project** from the top dropdown. Name it `DGShorts AI`.
 3. In the sidebar, select **APIs & Services** ➔ **Library**. Search for **YouTube Data API v3** and click **Enable**.
 4. In the sidebar, click **Google Auth Platform** (formerly *OAuth Consent Screen*):
    * Set **App Name** to `Shorts Bot Engine`.
@@ -397,3 +397,5 @@ sequenceDiagram
 ---
 
 Created with ❤️ by **Dilip Goud**. Happy Automating!
+
+### [⬆ back to top](#-dg-shorts-ai) 

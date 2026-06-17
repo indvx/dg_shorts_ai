@@ -1,5 +1,5 @@
 from src.services.base import BaseService
-from utils.logger import app_logger as logger
+from utils.logger import logger
 from src.sql.cruds import content as content_crud, short_video as short_video_crud
 from src.enums.content import ContentStatus
 from src.enums.short_video import ShortVideoStatus

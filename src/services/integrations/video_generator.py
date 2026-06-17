@@ -1,6 +1,6 @@
 import os
 import requests
-from utils.logger import app_logger as logger
+from utils.logger import logger
 from src.services.base import BaseService
 from src.sql.cruds import content as content_crud
 from src.enums.content import ContentStatus
