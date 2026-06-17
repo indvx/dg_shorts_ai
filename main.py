@@ -50,7 +50,7 @@ def startup_event():
         automation_service.create_audio,
         "cron",
         hour="10,15,18,20",
-        minute=31,
+        minute=40,
         max_instances=1,
     )
 
@@ -59,7 +59,7 @@ def startup_event():
         automation_service.fetch_and_generate_video,
         "cron",
         hour="10,15,18,20",
-        minute=32,
+        minute=41,
         max_instances=1,
     )
 
@@ -68,7 +68,7 @@ def startup_event():
         automation_service.merge_video_and_audio,
         "cron",
         hour="10,15,18,20",
-        minute=33,
+        minute=42,
         max_instances=1,
     )
 
@@ -77,7 +77,7 @@ def startup_event():
         automation_service.update_video_metadata,
         "cron",
         hour="10,15,18,20",
-        minute=34,
+        minute=43,
         max_instances=1,
     )
 
@@ -86,7 +86,7 @@ def startup_event():
         automation_service.upload_video_on_youtube,
         "cron",
         hour="10,15,18,20",
-        minute=35,
+        minute=44,
         max_instances=1,
     )
 
