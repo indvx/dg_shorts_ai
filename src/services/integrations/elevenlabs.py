@@ -12,6 +12,7 @@ class ElevenLabsService(BaseService):
         self.api_key = os.getenv("ELEVENLABS_API_KEY")
         self._elevenlabs = ElevenLabs(api_key=self.api_key)
         self.audio_directory = os.getenv("AUDIO_DIRECTORY", "data/audio")
+        self.voice_id = os.getenv("VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")
 
     def generate_speech_file(self, content) -> str:
         logger.info(
@@ -22,7 +23,7 @@ class ElevenLabsService(BaseService):
         try:
             response = self._elevenlabs.text_to_speech.convert(
                 text=content.content,
-                voice_id=content.voice_id or "JBFqnCBsd6RMkjVDRZzb",
+                voice_id=content.voice_id or self.voice_id,
                 model_id="eleven_v3",
                 output_format="mp3_44100_128",
             )

@@ -314,7 +314,9 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser to
 
 The FastAPI backend runs `APScheduler` in `main.py` to drive a decoupled, step-by-step queue pipeline. This prevents database and network blockages while safely distributing intensive media tasks.
 
-### Queue Execution Lifecyle
+The pipeline runs 4 times a day (at hours **10:00 (10 AM)**, **15:00 (3 PM)**, **18:00 (6 PM)**, and **20:00 (8 PM)**) with a sequential delay sequence to ensure tasks execute in logical order.
+
+### Queue Execution Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -327,14 +329,14 @@ sequenceDiagram
     participant YT as YouTube API
     
     rect rgb(240, 240, 255)
-    note right of S: Every 20 mins: create_content
+    note right of S: Run at H:29: create_content
     S->>LLM: Generate viral topic & script
     LLM-->>S: Title & script (Hindi text)
     S->>DB: Save Content as DRAFT
     end
 
     rect rgb(240, 255, 240)
-    note right of S: Every 25 mins: create_audio
+    note right of S: Run at H:40: create_audio
     S->>DB: Fetch DRAFT Content
     S->>EL: Synthesize script to speech
     EL-->>S: .mp3 file path
@@ -342,7 +344,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 240, 240)
-    note right of S: Every 30 mins: fetch_and_generate_video
+    note right of S: Run at H:41: fetch_and_generate_video
     S->>DB: Fetch AUDIO_GENERATED Content
     S->>P: Fetch portrait stock video matching topic
     P-->>S: .mp4 template path
@@ -350,7 +352,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 255, 240)
-    note right of S: Every 35 mins: merge_video_and_audio
+    note right of S: Run at H:42: merge_video_and_audio
     S->>DB: Fetch VIDEO_GENERATED Content
     S->>MV: Loop stock video & overlay audio
     MV-->>S: Output .mp4 path
@@ -358,7 +360,7 @@ sequenceDiagram
     end
 
     rect rgb(240, 255, 255)
-    note right of S: Every 40 mins: update_video_metadata
+    note right of S: Run at H:43: update_video_metadata
     S->>DB: Fetch ShortVideo (NOT_STARTED)
     S->>LLM: Generate Title, Description, and Tags
     LLM-->>S: Structured JSON Metadata
@@ -366,7 +368,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 240, 255)
-    note right of S: Cron (Daily at hours 0, 5, 10, 15, 20): upload_video_on_youtube
+    note right of S: Run at H:44: upload_video_on_youtube
     S->>DB: Fetch ready ShortVideo
     S->>YT: Upload vertical short with metadata
     YT-->>S: Video ID response
@@ -374,21 +376,23 @@ sequenceDiagram
     end
 
     rect rgb(240, 240, 240)
-    note right of S: Cron (01:30, 06:30, 11:30, 16:30, 21:30): clean_uploaded_video
+    note right of S: Daily at 12:30 AM: clean_uploaded_video
     S->>DB: Fetch PUBLISHED ShortVideos
     S->>S: Delete local .mp3 and .mp4 files
     S->>DB: Delete Content & ShortVideo records
     end
 ```
 
-* **Script Content Generation (`create_content`):** Runs every **20 minutes**. Selects a viral topic automatically, generates a Hindi script using the LLM Service, and inserts a `DRAFT` status content record.
-* **Speech Synthesis (`create_audio`):** Runs every **25 minutes**. Pulls pending `DRAFT` contents and invokes ElevenLabs text-to-speech to save the voice narration audio locally under `data/audio/` (transitions state to `audio_generated`).
-* **Background Video Sourcing (`fetch_and_generate_video`):** Runs every **30 minutes**. Identifies contents with generated audio, searches Pexels for matching portrait stock videos, downloads the file to `data/video/`, and shifts state to `video_generated`.
-* **Video Compilation & Overlay (`merge_video_and_audio`):** Runs every **35 minutes**. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track, write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `merged`).
-* **Metadata Enhancement (`update_video_metadata`):** Runs every **40 minutes**. Fetches `NOT_STARTED` short videos and prompts the LLM to generate search-optimized Titles, Descriptions, and Hashtag Tag list arrays.
-* **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs via a cron schedule at hours **0, 5, 10, 15, and 20** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
-* **Local Workspace Cleanup (`clean_uploaded_video`):** Runs via cron daily at **00:30**, and during intermediate phases at **01:30, 06:30, 11:30, 16:30, and 21:30** to delete uploaded local files (`audio/`, `video/`, and final `output/`) and purge database records.
-* **Log Rotation (`clean_last_7_days_log_file`):** Runs every **1 minute** (configured interval) to clean archival log files in the `logs/` directory older than 7 days.
+### Scheduled Jobs Reference
+
+* **Script Content Generation (`create_content`):** Runs at **10:29 AM, 3:29 PM, 6:29 PM, and 8:29 PM** daily. Automatically selects a trending topic, generates a Hindi script using the LLM Service, and inserts a `DRAFT` status content record.
+* **Speech Synthesis (`create_audio`):** Runs at **10:40 AM, 3:40 PM, 6:40 PM, and 8:40 PM** daily. Pulls pending `DRAFT` content records and invokes ElevenLabs text-to-speech to save the voice narration audio locally under `data/audio/` (transitions state to `AUDIO_GENERATED`).
+* **Background Video Sourcing (`fetch_and_generate_video`):** Runs at **10:41 AM, 3:41 PM, 6:41 PM, and 8:41 PM** daily. Identifies contents with generated audio, searches Pexels for matching portrait stock videos, downloads the file to `data/video/`, and shifts state to `VIDEO_GENERATED`.
+* **Video Compilation & Overlay (`merge_video_and_audio`):** Runs at **10:42 AM, 3:42 PM, 6:42 PM, and 8:42 PM** daily. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track, write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `MERGED`).
+* **Metadata Enrichment (`update_video_metadata`):** Runs at **10:43 AM, 3:43 PM, 6:43 PM, and 8:43 PM** daily. Fetches `NOT_STARTED` short videos and prompts the LLM to generate search-optimized Titles, Descriptions, and Hashtag Tag list arrays.
+* **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs at **10:44 AM, 3:44 PM, 6:44 PM, and 8:44 PM** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
+* **Local Workspace Cleanup (`clean_uploaded_video`):** Runs once daily at **12:30 AM**. Purges uploaded local files (`audio/`, `video/`, and final `output/`) and deletes Content & ShortVideo records for published videos from the database.
+* **Log Rotation (`clean_last_7_days_log_file`):** Runs once daily at **12:00 AM** (midnight) to clean archival log files in the `logs/` directory older than 7 days.
 
 ---
 
