@@ -104,7 +104,6 @@ GoudShorts_AI/
 │
 └── src/
     ├── __init__.py
-    ├── orchestrator.py   # Standing helper orchestrator
     │
     ├── api/              # HTTP Routing & Handlers
     │   ├── __init__.py
@@ -155,17 +154,18 @@ fastapi[standard]==0.136.3
 uvicorn==0.49.0
 alembic==1.18.4
 psycopg2-binary==2.9.12
+openai==2.41.1
 sqlalchemy==2.0.50
 apscheduler==3.11.2
 python-dotenv==1.2.2
 google-genai==2.8.0
-openai==2.41.1
 elevenlabs==2.52.0
 moviepy==2.2.1
 requests==2.34.2
 google-api-python-client==2.197.0
 google-auth-oauthlib==1.4.0
 google-auth-httplib2==0.4.0
+pymysql==1.2.0
 ```
 
 Run this command in your terminal to install everything:
@@ -202,6 +202,11 @@ PEXELS_API_KEY='your_pexels_api_key_here'
 # Google Client Credentials paths
 GOOGLE_CLINT_SECRET='secret/client_secret.json'
 GOOGLE_TOKEN_PICKEL='secret/token.pickle'
+
+# Directory Settings (Optional overrides)
+AUDIO_DIRECTORY='data/audio'
+VIDEO_DIRECTORY='data/video'
+VIDEO_OUTPUT_DIRECTORY='data/output'
 ```
 
 ---
@@ -218,7 +223,7 @@ alembic upgrade head
 
 ## 🤖 Step 3: LLM Integration (Gemini & OpenAI) Setup
 
-The `LLMService` wrapper supports both the modern Google GenAI SDK (`google-genai` package) with the `gemini-2.5-flash` model and the OpenAI SDK (`openai` package) with `gpt-3.5-turbo` (or other standard models).
+The `LLMService` wrapper supports both the modern Google GenAI SDK (`google-genai` package) with the `gemini-2.5-flash` model and the OpenAI SDK (`openai` package) with standard models.
 
 1. **For Gemini:** Set `AI_PROVIDER_NAME=gemini` and your `AI_API_KEY` obtained from [Google AI Studio](https://aistudio.google.com/).
 2. **For OpenAI:** Set `AI_PROVIDER_NAME=openai`, choose an `AI_MODEL_NAME` (e.g. `gpt-3.5-turbo` or `gpt-4o-mini`), and set your OpenAI `AI_API_KEY`.
@@ -295,17 +300,21 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser to
 | Method | Endpoint | Description | Payload / Params |
 | :--- | :--- | :--- | :--- |
 | **POST** | `/api/v1/generate-script` | Generates a Hindi script about a topic and creates a draft Content record. | `{"topic": "string"}` |
-| **POST** | `/api/v1/text/{content_id}/generate-audio` | Converts script text to speech audio via ElevenLabs. | - |
-| **POST** | `/api/v1/text/{content_id}/get-video` | Fetches vertical matching background video from Pexels. | - |
-| **POST** | `/api/v1/content/{content_id}/merge-video` | Merges audio and video, loops/clips video as needed, and creates a ShortVideo. | - |
-| **POST** | `/api/v1/video/{content_id}/metadata` | Generates Title, Description, and Tags via LLM. | - |
-| **POST** | `/api/v1/video/{video_id}/publish` | Direct-uploads the compiled video onto YouTube via API. | - |
+| **POST** | `/api/v1/text/{content_id}/generate-audio` | Converts script text to speech audio via ElevenLabs. | `content_id` (path parameter) |
+| **POST** | `/api/v1/text/{content_id}/get-video` | Fetches vertical matching background video from Pexels. | `content_id` (path parameter) |
+| **POST** | `/api/v1/content/{content_id}/merge-video` | Merges audio and video, loops/clips video as needed, and creates a ShortVideo. | `content_id` (path parameter) |
+| **POST** | `/api/v1/video/{content_id}/metadata` | Generates Title, Description, and Tags via LLM. | `content_id` (path parameter) |
+| **POST** | `/api/v1/video/{video_id}/publish` | Direct-uploads the compiled video onto YouTube via API. | `video_id` (path parameter) |
 | **GET** | `/logs/current` | Fetches the last 500 lines of today's live execution log. | - |
-| **GET** | `/logs/filter` | Fetches historical log file archives. | `?date=YYYY-MM-DD` |
+| **GET** | `/logs/filter` | Fetches historical log file archives. | `?date=YYYY-MM-DD` (query parameter) |
 
-### 3. Progressive Background Task Scheduling (APScheduler)
+---
 
-When the FastAPI server launches, `APScheduler` initializes background runners in `main.py` that drive a decoupled, step-by-step queue pipeline. This prevents thread blocks and ensures resilient media rendering:
+## 📅 Background Orchestrator & Task Scheduling
+
+The FastAPI backend runs `APScheduler` in `main.py` to drive a decoupled, step-by-step queue pipeline. This prevents database and network blockages while safely distributing intensive media tasks.
+
+### Queue Execution Lifecyle
 
 ```mermaid
 sequenceDiagram
@@ -357,7 +366,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 240, 255)
-    note right of S: Cron (0, 5, 10, 15, 20:00): upload_video_on_youtube
+    note right of S: Cron (Daily at hours 0, 5, 10, 15, 20): upload_video_on_youtube
     S->>DB: Fetch ready ShortVideo
     S->>YT: Upload vertical short with metadata
     YT-->>S: Video ID response

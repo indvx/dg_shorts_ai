@@ -7,14 +7,15 @@ from src.sql.cruds import short_video as short_video_crud
 from src.enums.content import ContentStatus
 from src.enums.short_video import ShortVideoStatus
 import math
-
+import os
 
 class VideoMergeService(BaseService):
     def __init__(self):
         super().__init__()
+        self.output_directory = os.getenv("VIDEO_OUTPUT_DIRECTORY", "data/output")
 
     def merge_and_mute_video(self, content_id: int):
-        logger.info("Audio-Video Stitching Module started...")
+        logger.info(f"Audio-Video Stitching Module started... {content_id}")
 
         content = content_crud.get_content(self.db, content_id)
         if not content:
@@ -28,7 +29,7 @@ class VideoMergeService(BaseService):
             raise ValueError(
                 f"Content with id {content_id} is not in video generated state."
             )
-
+        os.makedirs(self.output_directory, exist_ok=True)
         output_path = content.video_path.replace("video", "output")
         video_clip = None
         audio_clip = None

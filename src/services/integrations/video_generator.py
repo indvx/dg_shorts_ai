@@ -11,6 +11,7 @@ class VideoGeneratorService(BaseService):
         super().__init__()
         self.api_url = "https://api.pexels.com/videos/search"
         self.api_key = os.getenv("PEXELS_API_KEY")
+        self.video_directory = os.getenv("VIDEO_DIRECTORY", "data/video")
 
     def fetch_and_download_background(self, content_id: int) -> str:
         content = content_crud.get_content(self.db, content_id)
@@ -22,7 +23,6 @@ class VideoGeneratorService(BaseService):
         search_query = content.title
         headers = {"Authorization": self.api_key}
         params = {"query": search_query, "per_page": 2, "orientation": "portrait"}
-
         try:
             logger.info(f"Searching Pexels for vertical stock videos: '{search_query}'")
             response = requests.get(
@@ -37,8 +37,8 @@ class VideoGeneratorService(BaseService):
             video_data = requests.get(download_url, stream=True, timeout=30)
 
             filename = f"{content.audio_path.split("/")[-1].replace(".mp3", ".mp4")}"
-            os.makedirs("data/video", exist_ok=True)
-            download_path = f"data/video/{filename}"
+            os.makedirs(self.video_directory, exist_ok=True)
+            download_path = os.path.join(self.video_directory, filename)
             with open(download_path, "wb") as f:
                 for chunk in video_data.iter_content(chunk_size=1024 * 1024):
                     if chunk:
