@@ -10,16 +10,21 @@ from src.services.base import BaseService
 class YouTubeService(BaseService):
     def __init__(self):
         super().__init__()
-        self.scopes = ["https://www.googleapis.com/auth/youtube.upload"]
-        self.secret_file = os.getenv("GOOGLE_CLINT_SECRET")
-        self.token_file = os.getenv("GOOGLE_TOKEN_PICKEL")
+        scopes_raw = os.getenv("YOUTUBE_SCOPES", "https://www.googleapis.com/auth/youtube.upload")
+        if scopes_raw:
+            self.scopes = [ s.strip() for s in scopes_raw.split(",") if s.strip()]
+        else:
+            self.scopes = ["https://www.googleapis.com/auth/youtube.upload"]
+        
+        self.google_secret_file = os.getenv("GOOGLE_CLIENT_SECRET")
+        self.google_token_file = os.getenv("GOOGLE_TOKEN_PICKLE")
         self.youtube_client = self.__authenticate_and_login()
 
     def __authenticate_and_login(self):
         credentials = None
         
-        if os.path.exists(self.token_file):
-            with open(self.token_file, "rb") as token:
+        if os.path.exists(self.google_token_file):
+            with open(self.google_token_file, "rb") as token:
                 credentials = pickle.load(token)
                 
         if not credentials or not credentials.valid:
@@ -28,14 +33,14 @@ class YouTubeService(BaseService):
                 credentials.refresh(Request())
             else:
                 logger.info("No valid token session found. Launching local interactive auth browser...")
-                if not os.path.exists(self.secret_file):
-                    logger.critical(f"Missing critical OAuth secret configuration file at: {self.secret_file}")
+                if not os.path.exists(self.google_secret_file):
+                    logger.critical(f"Missing critical OAuth secret configuration file at: {self.google_secret_file}")
                     raise FileNotFoundError("Please place client_secret.json inside src/services/")
                 
-                flow = InstalledAppFlow.from_client_secrets_file(self.secret_file, self.scopes)
+                flow = InstalledAppFlow.from_client_secrets_file(self.google_secret_file, self.scopes)
                 credentials = flow.run_local_server(port=0)
             
-            with open(self.token_file, "wb") as token:
+            with open(self.google_token_file, "wb") as token:
                 pickle.dump(credentials, token)
 
         return build("youtube", "v3", credentials=credentials)

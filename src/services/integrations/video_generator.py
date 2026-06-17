@@ -9,7 +9,7 @@ from src.enums.content import ContentStatus
 class VideoGeneratorService(BaseService):
     def __init__(self):
         super().__init__()
-        self.api_url = "https://api.pexels.com/videos/search"
+        self.api_url = os.getenv("PEXELS_API_URL")
         self.api_key = os.getenv("PEXELS_API_KEY")
         self.video_directory = os.getenv("VIDEO_DIRECTORY", "data/video")
 

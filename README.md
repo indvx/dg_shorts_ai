@@ -87,6 +87,12 @@ dg_shorts_ai/
 ├── alembic/              # Database migration version files
 │   └── versions/         # Python migration scripts for tables
 │
+├── config/               # Application configurations and API secrets
+│   ├── app/              # Config module/helpers
+│   └── secret/           # Google API Client secret and token folder
+│       ├── client_secret.json # OAuth Client JSON secrets
+│       └── token.pickle  # Generated OAuth access/refresh token pickle
+│
 ├── logs/                 # Active, persistent logging directories
 │   └── app_YYYY-MM-DD.log # Dynamic date-bound log files (Restart resilient, no overwrite)
 │
@@ -94,10 +100,6 @@ dg_shorts_ai/
 │   ├── audio/            # Processed speech-synthesis MP3 files
 │   ├── video/            # Raw downloaded vertical stock video MP4 templates
 │   └── output/           # Completely compiled final shorts ready for broadcast
-│
-├── secret/               # Google API Client secret and token folder
-│   ├── client_secret.json # OAuth Client JSON secrets
-│   └── token.pickle      # Generated OAuth access/refresh token pickle
 │
 ├── utils/                # Utility modules
 │   └── logger.py         # Central logging engine configuration
@@ -107,8 +109,10 @@ dg_shorts_ai/
     │
     ├── api/              # HTTP Routing & Handlers
     │   ├── __init__.py
-    │   ├── routes.py     # FastAPI core workflow endpoints
-    │   └── logs.py       # Developer real-time log access endpoints
+    │   └── v1/           # Version 1 API Routes
+    │       ├── content.py # Script & audio generation endpoints
+    │       ├── logs.py    # Developer real-time log access endpoints
+    │       └── video.py   # Video generation, merge, metadata, and publishing endpoints
     │
     ├── db/               # Database engine session and dependencies
     │   ├── __init__.py
@@ -196,12 +200,14 @@ AI_API_KEY='your_api_key_here'
 ELEVENLABS_API_KEY='your_elevenlabs_api_key_here'
 VOICE_ID='JBFqnCBsd6RMkjVDRZzb'
 
-# Pexels Stock Video API Key
+# Pexels API Configurations
+PEXELS_API_URL='https://api.pexels.com/videos/search'
 PEXELS_API_KEY='your_pexels_api_key_here'
 
 # Google Client Credentials paths
-GOOGLE_CLINT_SECRET='secret/client_secret.json'
-GOOGLE_TOKEN_PICKEL='secret/token.pickle'
+GOOGLE_CLIENT_SECRET='config/secret/client_secret.json'
+GOOGLE_TOKEN_PICKLE='config/secret/token.pickle'
+YOUTUBE_SCOPES='https://www.googleapis.com/auth/youtube.upload'
 
 # Directory Settings (Optional overrides)
 AUDIO_DIRECTORY='data/audio'
@@ -268,15 +274,15 @@ To upload videos without manual intervention, Google requires desktop OAuth veri
    * Download the generated client secrets JSON file.
 
 ### B. Project File Association
-1. Create a folder named `secret` in the root of the project: `mkdir secret`.
-2. Move and rename the downloaded file to exactly `secret/client_secret.json`.
+1. Create a folder named `secret` inside `config`: `mkdir -p config/secret`.
+2. Move and rename the downloaded file to exactly `config/secret/client_secret.json`.
 
 ### C. First-Time Interactive Handshake
 1. Run your FastAPI development server.
 2. Trigger the upload endpoint or trigger a run. A browser tab will pop up, asking you to sign into Google.
 3. Choose your YouTube Gmail account ➔ Click **Advanced** ➔ Go to **Shorts Bot Engine (unsafe)**.
 4. Check the box granting permissions to manage your YouTube account and click **Allow**.
-5. Once complete, your server will automatically generate a token file at the path designated by `GOOGLE_TOKEN_PICKEL` (defaults to `secret/token.pickle`).
+5. Once complete, your server will automatically generate a token file at the path designated by `GOOGLE_TOKEN_PICKLE` (defaults to `config/secret/token.pickle`).
 
 > [!NOTE]
 > For future cloud deployments (VPS, EC2), simply copy this generated `token.pickle` alongside your files. The browser handshake will never be needed again!
@@ -299,14 +305,14 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser to
 
 | Method | Endpoint | Description | Payload / Params |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/api/v1/generate-script` | Generates a Hindi script about a topic and creates a draft Content record. | `{"topic": "string"}` |
-| **POST** | `/api/v1/text/{content_id}/generate-audio` | Converts script text to speech audio via ElevenLabs. | `content_id` (path parameter) |
-| **POST** | `/api/v1/text/{content_id}/get-video` | Fetches vertical matching background video from Pexels. | `content_id` (path parameter) |
-| **POST** | `/api/v1/content/{content_id}/merge-video` | Merges audio and video, loops/clips video as needed, and creates a ShortVideo. | `content_id` (path parameter) |
-| **POST** | `/api/v1/video/{content_id}/metadata` | Generates Title, Description, and Tags via LLM. | `content_id` (path parameter) |
-| **POST** | `/api/v1/video/{video_id}/publish` | Direct-uploads the compiled video onto YouTube via API. | `video_id` (path parameter) |
-| **GET** | `/logs/current` | Fetches the last 500 lines of today's live execution log. | - |
-| **GET** | `/logs/filter` | Fetches historical log file archives. | `?date=YYYY-MM-DD` (query parameter) |
+| **POST** | `/api/v1/content/generate-script` | Generates a Hindi script about a topic and creates a draft Content record. | `{"topic": "string"}` |
+| **POST** | `/api/v1/content/text/{content_id}/generate-audio` | Converts script text to speech audio via ElevenLabs. | `content_id` (path parameter) |
+| **POST** | `/api/v1/video/content/{content_id}/generate-video` | Fetches vertical matching background video from Pexels. | `content_id` (path parameter) |
+| **POST** | `/api/v1/video/content/{content_id}/merge-video` | Merges audio and video, loops/clips video as needed, and creates a ShortVideo. | `content_id` (path parameter) |
+| **POST** | `/api/v1/video/video/{video_id}/metadata` | Generates Title, Description, and Tags via LLM. | `video_id` (path parameter) |
+| **POST** | `/api/v1/video/video/{video_id}/publish` | Direct-uploads the compiled video onto YouTube via API. | `video_id` (path parameter) |
+| **GET** | `/api/v1/logs/current` | Fetches the last 500 lines of today's live execution log. | - |
+| **GET** | `/api/v1/logs/filter` | Fetches historical log file archives. | `?date=YYYY-MM-DD` (query parameter) |
 
 ---
 
@@ -314,7 +320,7 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser to
 
 The FastAPI backend runs `APScheduler` in `main.py` to drive a decoupled, step-by-step queue pipeline. This prevents database and network blockages while safely distributing intensive media tasks.
 
-The pipeline runs 4 times a day (at hours **10:00 (10 AM)**, **15:00 (3 PM)**, **18:00 (6 PM)**, and **20:00 (8 PM)**) with a sequential delay sequence to ensure tasks execute in logical order.
+The pipeline runs 4 times a day (at hours **10:30 (10:30 AM)**, **15:30 (3:30 PM)**, **18:30 (6:30 PM)**, and **20:30 (8:30 PM)**) with a sequential 1-minute delay sequence to ensure tasks execute in logical order.
 
 ### Queue Execution Lifecycle
 
@@ -329,14 +335,14 @@ sequenceDiagram
     participant YT as YouTube API
     
     rect rgb(240, 240, 255)
-    note right of S: Run at H:29: create_content
+    note right of S: Run at H:30: create_content
     S->>LLM: Generate viral topic & script
     LLM-->>S: Title & script (Hindi text)
     S->>DB: Save Content as DRAFT
     end
 
     rect rgb(240, 255, 240)
-    note right of S: Run at H:40: create_audio
+    note right of S: Run at H:31: create_audio
     S->>DB: Fetch DRAFT Content
     S->>EL: Synthesize script to speech
     EL-->>S: .mp3 file path
@@ -344,7 +350,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 240, 240)
-    note right of S: Run at H:41: fetch_and_generate_video
+    note right of S: Run at H:32: fetch_and_generate_video
     S->>DB: Fetch AUDIO_GENERATED Content
     S->>P: Fetch portrait stock video matching topic
     P-->>S: .mp4 template path
@@ -352,7 +358,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 255, 240)
-    note right of S: Run at H:42: merge_video_and_audio
+    note right of S: Run at H:33: merge_video_and_audio
     S->>DB: Fetch VIDEO_GENERATED Content
     S->>MV: Loop stock video & overlay audio
     MV-->>S: Output .mp4 path
@@ -360,7 +366,7 @@ sequenceDiagram
     end
 
     rect rgb(240, 255, 255)
-    note right of S: Run at H:43: update_video_metadata
+    note right of S: Run at H:34: update_video_metadata
     S->>DB: Fetch ShortVideo (NOT_STARTED)
     S->>LLM: Generate Title, Description, and Tags
     LLM-->>S: Structured JSON Metadata
@@ -368,7 +374,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 240, 255)
-    note right of S: Run at H:44: upload_video_on_youtube
+    note right of S: Run at H:35: upload_video_on_youtube
     S->>DB: Fetch ready ShortVideo
     S->>YT: Upload vertical short with metadata
     YT-->>S: Video ID response
@@ -385,12 +391,12 @@ sequenceDiagram
 
 ### Scheduled Jobs Reference
 
-* **Script Content Generation (`create_content`):** Runs at **10:29 AM, 3:29 PM, 6:29 PM, and 8:29 PM** daily. Automatically selects a trending topic, generates a Hindi script using the LLM Service, and inserts a `DRAFT` status content record.
-* **Speech Synthesis (`create_audio`):** Runs at **10:40 AM, 3:40 PM, 6:40 PM, and 8:40 PM** daily. Pulls pending `DRAFT` content records and invokes ElevenLabs text-to-speech to save the voice narration audio locally under `data/audio/` (transitions state to `AUDIO_GENERATED`).
-* **Background Video Sourcing (`fetch_and_generate_video`):** Runs at **10:41 AM, 3:41 PM, 6:41 PM, and 8:41 PM** daily. Identifies contents with generated audio, searches Pexels for matching portrait stock videos, downloads the file to `data/video/`, and shifts state to `VIDEO_GENERATED`.
-* **Video Compilation & Overlay (`merge_video_and_audio`):** Runs at **10:42 AM, 3:42 PM, 6:42 PM, and 8:42 PM** daily. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track, write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `MERGED`).
-* **Metadata Enrichment (`update_video_metadata`):** Runs at **10:43 AM, 3:43 PM, 6:43 PM, and 8:43 PM** daily. Fetches `NOT_STARTED` short videos and prompts the LLM to generate search-optimized Titles, Descriptions, and Hashtag Tag list arrays.
-* **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs at **10:44 AM, 3:44 PM, 6:44 PM, and 8:44 PM** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
+* **Script Content Generation (`create_content`):** Runs at **10:30 AM, 3:30 PM, 6:30 PM, and 8:30 PM** daily. Automatically selects a trending topic, generates a Hindi script using the LLM Service, and inserts a `DRAFT` status content record.
+* **Speech Synthesis (`create_audio`):** Runs at **10:31 AM, 3:31 PM, 6:31 PM, and 8:31 PM** daily. Pulls pending `DRAFT` content records and invokes ElevenLabs text-to-speech to save the voice narration audio locally under `data/audio/` (transitions state to `AUDIO_GENERATED`).
+* **Background Video Sourcing (`fetch_and_generate_video`):** Runs at **10:32 AM, 3:32 PM, 6:32 PM, and 8:32 PM** daily. Identifies contents with generated audio, searches Pexels for matching portrait stock videos, downloads the file to `data/video/`, and shifts state to `VIDEO_GENERATED`.
+* **Video Compilation & Overlay (`merge_video_and_audio`):** Runs at **10:33 AM, 3:33 PM, 6:33 PM, and 8:33 PM** daily. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track, write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `MERGED`).
+* **Metadata Enrichment (`update_video_metadata`):** Runs at **10:34 AM, 3:34 PM, 6:34 PM, and 8:34 PM** daily. Fetches `NOT_STARTED` short videos and prompts the LLM to generate search-optimized Titles, Descriptions, and Hashtag Tag list arrays.
+* **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs at **10:35 AM, 3:35 PM, 6:35 PM, and 8:35 PM** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
 * **Local Workspace Cleanup (`clean_uploaded_video`):** Runs once daily at **12:30 AM**. Purges uploaded local files (`audio/`, `video/`, and final `output/`) and deletes Content & ShortVideo records for published videos from the database.
 * **Log Rotation (`clean_last_7_days_log_file`):** Runs once daily at **12:00 AM** (midnight) to clean archival log files in the `logs/` directory older than 7 days.
 

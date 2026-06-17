@@ -5,4 +5,4 @@ logs/*.log
 data/audio/*
 data/video/*
 data/output/*
-secret/*
+config/secret/*

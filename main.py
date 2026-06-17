@@ -40,57 +40,57 @@ def startup_event():
         max_instances=1,
     )
 
-    # Create content at 10:29 AM, 1:29 PM, 4:29 PM, 7:29 PM, 8:29 PM
+    # Create content at 10:30 AM, 3:30 PM, 6:30 PM, 8:30 PM
     scheduler.add_job(
         automation_service.create_content,
         "cron",
         hour="10,15,18,20",
-        minute=29,
+        minute=30,
         max_instances=1,
     )
 
-    # Create audio at 10:31 AM, 1:31 PM, 4:31 PM, 7:31 PM, 8:31 PM
+    # Create audio at 10:31 AM, 3:31 PM, 6:31 PM, 8:31 PM
     scheduler.add_job(
         automation_service.create_audio,
         "cron",
         hour="10,15,18,20",
-        minute=40,
+        minute=31,
         max_instances=1,
     )
 
-    # Fetch and generate video at 10:32 AM, 1:32 PM, 4:32 PM, 7:32 PM, 8:32 PM
+    # Fetch and generate video at 10:32 AM, 3:32 PM, 6:32 PM, 8:32 PM
     scheduler.add_job(
         automation_service.fetch_and_generate_video,
         "cron",
         hour="10,15,18,20",
-        minute=41,
+        minute=32,
         max_instances=1,
     )
 
-    # Merge video and audio at 10:33 AM, 1:33 PM, 4:33 PM, 7:33 PM, 8:33 PM
+    # Merge video and audio at 10:33 AM, 3:33 PM, 6:33 PM, 8:33 PM
     scheduler.add_job(
         automation_service.merge_video_and_audio,
         "cron",
         hour="10,15,18,20",
-        minute=42,
+        minute=33,
         max_instances=1,
     )
 
-    # Update video metadata at 10:34 AM, 1:34 PM, 4:34 PM, 7:34 PM, 8:34 PM
+    # Update video metadata at 10:34 AM, 3:34 PM, 6:34 PM, 8:34 PM
     scheduler.add_job(
         automation_service.update_video_metadata,
         "cron",
         hour="10,15,18,20",
-        minute=43,
+        minute=34,
         max_instances=1,
     )
 
-    # Upload video on youtube at 10:35 AM, 3:35 PM, 8:35 PM
+    # Upload video on youtube at 10:35 AM, 3:35 PM, 6:35 PM, 8:35 PM
     scheduler.add_job(
         automation_service.upload_video_on_youtube,
         "cron",
         hour="10,15,18,20",
-        minute=44,
+        minute=35,
         max_instances=1,
     )
 
