@@ -31,6 +31,15 @@ def startup_event():
         max_instances=1,
     )
 
+    # Clean last 7 days contents every day at 12:10 AM
+    scheduler.add_job(
+        automation_service.clean_last_7_days_contents,
+        "cron",
+        hour=0,
+        minute=10,
+        max_instances=1,
+    )
+
     # Clean uploaded videos every day at 12:30 AM
     scheduler.add_job(
         automation_service.clean_uploaded_video,

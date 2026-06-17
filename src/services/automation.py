@@ -225,3 +225,39 @@ class AutomationService(BaseService):
             raise HTTPException(
                 status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
             )
+
+    def clean_last_7_days_contents(self):
+        try:
+            logger.info(f"Step 1/2: Getting contents")
+            contents = content_crud.get_all_contents(self.db, days=7)
+            logger.info(f"Step 2/2: Got contents {len(contents)}")
+        except Exception as e:
+            logger.error(f"Error 1/2: Internal server error: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Internal server error: {str(e)}"
+            )
+
+        try:
+            if len(contents) == 0:
+                logger.info(f"No contents found to process")
+                return
+
+            logger.info(f"Step 3/4: Cleaning last 7 days contents")
+            for content in contents:
+                logger.info(f"Checking content {content.id}")
+                if len(content.short_video) == 0 or content.status == content_status.ContentStatus.ERROR:
+                    logger.info(f"Cleaning content {content.id}")
+                    if content.audio_path is not None:
+                        os.remove(content.audio_path)
+                        logger.info(f"Cleaned content {content.id} audio path")
+                    if content.video_path is not None:
+                        os.remove(content.video_path)
+                        logger.info(f"Cleaned content {content.id} video path")
+                    content_crud.delete_content(self.db, content)
+                    logger.info(f"Cleaned content {content.id}")
+            logger.info(f"Step 4/4: Cleaned last 7 days contents")
+        except Exception as e:
+            logger.error(f"Error 2/2: Internal server error: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
+            )

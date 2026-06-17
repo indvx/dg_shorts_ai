@@ -1,6 +1,7 @@
 from src.sql.models.content import Content
 from sqlalchemy.orm import Session
 from src.enums.content import ContentStatus
+from datetime import datetime, timedelta, UTC
 
 
 def create_content(db: Session, content_data: dict):
@@ -14,8 +15,12 @@ def create_content(db: Session, content_data: dict):
     return content
 
 
-def get_all_contents(db: Session):
-    return db.query(Content).all()
+def get_all_contents(db: Session, days: int = 7) -> list[Content]:
+    query = db.query(Content)
+    if days is not None and days != 0:
+        filter_date = datetime.now(UTC) - timedelta(days=days)
+        query = query.filter(Content.created_at <= filter_date)
+    return query.all()
 
 
 def get_content(db: Session, content_id: int) -> Content:
