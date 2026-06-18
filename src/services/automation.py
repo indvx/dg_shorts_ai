@@ -33,10 +33,8 @@ class AutomationService(BaseService):
                 content_crud.delete_content(self.db, video.content)
                 short_video_crud.delete_short_video(self.db, video)
         except Exception as e:
-            logger.error(f"Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 1: Internal server error: {str(e)}")
+            return
 
     def clean_last_7_days_log_file(self):
         logger.info("Starting log cleanup")
@@ -56,10 +54,8 @@ class AutomationService(BaseService):
                 except ValueError:
                     logger.warning(f"Invalid log filename: {log_file}")
         except Exception as e:
-            logger.exception("Failed to clean logs")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 2: Internal server error: {str(e)}")
+            return
 
     def upload_video_on_youtube(self):
         logger.info(f"Starting to upload video to youtube")
@@ -68,10 +64,8 @@ class AutomationService(BaseService):
             short_video = short_video_crud.get_ready_to_upload_short_video(self.db)
             logger.info(f"Step 2/2: Got video content")
         except Exception as e:
-            logger.error(f"Error 1/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 3: Internal server error: {str(e)}")
+            return
 
         try:
             if not short_video:
@@ -81,10 +75,8 @@ class AutomationService(BaseService):
             self.script_service.upload_video_to_youtube(short_video.id)
             logger.info(f"Step 4/4: Uploaded video to youtube")
         except Exception as e:
-            logger.error(f"Error 2/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 4: Internal server error: {str(e)}")
+            return
 
     def create_content(self):
         logger.info(f"Starting to create content")
@@ -93,20 +85,16 @@ class AutomationService(BaseService):
             topic = self.script_service.generate_topic()
             logger.info(f"Step 2/3: Generated topic: '{topic}'")
         except Exception as e:
-            logger.error(f"Error 1/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 5: Internal server error: {str(e)}")
+            return
 
         try:
             logger.info(f"Step 3/3: Creating content with topic")
             content = self.script_service.generate_script(topic)
             logger.info(f"Step 4/4: Created content with topic: '{topic}'")
         except Exception as e:
-            logger.error(f"Error 2/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 6: Internal server error: {str(e)}")
+            return
 
     def create_audio(self):
         logger.info(f"Starting to create audio")
@@ -123,10 +111,8 @@ class AutomationService(BaseService):
             )
             logger.info(f"Step 2/2: Got content")
         except Exception as e:
-            logger.error(f"Error 1/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 7: Internal server error: {str(e)}")
+            return
 
         try:
             if not content:
@@ -136,10 +122,8 @@ class AutomationService(BaseService):
             self.script_service.generate_audio_from_content(content_id=content.id)
             logger.info(f"Step 4/4: Generated audio for content")
         except Exception as e:
-            logger.error(f"Error 2/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 8: Internal server error: {str(e)}")
+            return
 
     def fetch_and_generate_video(self):
         logger.info(f"Starting to fetch and generate video")
@@ -151,14 +135,12 @@ class AutomationService(BaseService):
             )
             logger.info(f"Step 2/2: Got content")
         except Exception as e:
-            logger.error(f"Error 1/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 9: Internal server error: {str(e)}")
+            return
 
         try:
             if not content:
-                logger.info(f"No content found to process")
+                logger.error(f"No content found to process")
                 return
             logger.info(f"Step 3/4: Fetching and generating video for content")
             self.video_generator_service.fetch_and_download_background(
@@ -166,10 +148,8 @@ class AutomationService(BaseService):
             )
             logger.info(f"Step 4/4: Fetched and generated video for content")
         except Exception as e:
-            logger.error(f"Error 2/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 10: Internal server error: {str(e)}")
+            return
 
     def merge_video_and_audio(self):
         logger.info(f"Starting to merge video and audio")
@@ -183,23 +163,19 @@ class AutomationService(BaseService):
             )
             logger.info(f"Step 2/2: Got content")
         except Exception as e:
-            logger.error(f"Error 1/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 11: Internal server error: {str(e)}")
+            return
 
         try:
             if not content:
-                logger.info(f"No content found to process")
+                logger.error(f"No content found to process")
                 return
             logger.info(f"Step 3/4: Merging video and audio for content")
             self.video_merge_service.merge_and_mute_video(content_id=content.id)
             logger.info(f"Step 4/4: Merged video and audio for content")
         except Exception as e:
-            logger.error(f"Error 2/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 12: Internal server error: {str(e)}")
+            return
 
     def update_video_metadata(self):
         logger.info(f"Starting to update video metadata")
@@ -208,10 +184,8 @@ class AutomationService(BaseService):
             short_video = short_video_crud.get_ready_to_metadata_short_video(self.db)
             logger.info(f"Step 2/2: Got content")
         except Exception as e:
-            logger.error(f"Error 1/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 13: Internal server error: {str(e)}")
+            return
 
         try:
             if not short_video:
@@ -221,10 +195,8 @@ class AutomationService(BaseService):
             self.script_service.update_video_content_metadata(short_video.id)
             logger.info(f"Step 4/4: Updated video metadata for content")
         except Exception as e:
-            logger.error(f"Error 2/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 14: Internal server error: {str(e)}")
+            return
 
     def clean_last_7_days_contents(self):
         try:
@@ -232,14 +204,12 @@ class AutomationService(BaseService):
             contents = content_crud.get_all_contents(self.db, days=7)
             logger.info(f"Step 2/2: Got contents {len(contents)}")
         except Exception as e:
-            logger.error(f"Error 1/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 15: Internal server error: {str(e)}")
+            return
 
         try:
             if len(contents) == 0:
-                logger.info(f"No contents found to process")
+                logger.error(f"No contents found to process")
                 return
 
             logger.info(f"Step 3/4: Cleaning last 7 days contents")
@@ -257,7 +227,5 @@ class AutomationService(BaseService):
                     logger.info(f"Cleaned content {content.id}")
             logger.info(f"Step 4/4: Cleaned last 7 days contents")
         except Exception as e:
-            logger.error(f"Error 2/2: Internal server error: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error 2/2: Internal server error: {str(e)}"
-            )
+            logger.error(f"Error 16: Internal server error: {str(e)}")
+            return
