@@ -19,13 +19,13 @@ router = APIRouter(
 def generate_short_script(data: GenerateScriptSchema):
     try:
         logger.info("API Request: Generating script")
-        topic = data.topic
+        topic = data.topic_id
         if not topic:
             raise HTTPException(status_code=400, detail="Topic is required")
 
         script = ScriptService().generate_script(topic)
-        logger.info(f"Generated script for topic: '{topic}'")
-        return {"message": script}
+        logger.info(f"Generated script for topic: '{script.title}'")
+        return script
     except HTTPException as e:
         logger.error(f"Refused API Request: Invalid request body parsed: {str(e)}")
         raise HTTPException(
@@ -33,7 +33,7 @@ def generate_short_script(data: GenerateScriptSchema):
         )
     except Exception as e:
         logger.error(f"Internal Server Error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
 
 
 @router.post("/text/{content_id:int}/generate-audio")
@@ -52,4 +52,4 @@ def generate_text_to_audio(content_id: int):
         )
     except Exception as e:
         logger.error(f"Internal Server Error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=f"{str(e)}")

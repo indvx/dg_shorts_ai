@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from src.sql.models.content import Content
 from src.sql.models.short_video import ShortVideo
+from src.sql.models.topic import Topic
 from src.db.base import Base
 from src.db.session import engine
 from alembic import context

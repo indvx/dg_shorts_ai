@@ -4,7 +4,7 @@ from src.enums.content import ContentStatus
 from datetime import datetime, timedelta, UTC
 
 
-def create_content(db: Session, content_data: dict):
+def create_content(db: Session, content_data: dict)-> Content:
     content = Content()
     content.title = content_data.get("title")
     content.content = content_data.get("content")

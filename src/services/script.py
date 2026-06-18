@@ -1,6 +1,10 @@
 from src.services.base import BaseService
 from utils.logger import logger
-from src.sql.cruds import content as content_crud, short_video as short_video_crud
+from src.sql.cruds import (
+    content as content_crud,
+    short_video as short_video_crud,
+    topic as topic_crud,
+)
 from src.enums.content import ContentStatus
 from src.enums.short_video import ShortVideoStatus
 from src.services.integrations.llm import LLMService
@@ -17,20 +21,36 @@ class ScriptService(BaseService):
         self.elevenlab_service = ElevenLabsService()
 
     def generate_topic(self, topic: str | None = None) -> str:
-        return self.llm_service.generate_topic(topic)
-
-    def generate_script(self, topic: str):
-        content = {"title": topic}
         try:
-            script = self.llm_service.generate_script(topic)
+            new_topic = self.llm_service.generate_topic(topic)
+        except Exception as e:
+            logger.error(f"Failed to generate topic: {str(e)}")
+            raise Exception(f"Failed to generate topic: {str(e)}")
+        
+        topic_slug = self.get_topic_slug(new_topic)
+        existing = topic_crud.get_topic_by_slug(self.db, topic_slug)
+        if existing:
+            return existing.name
+        new_topic = topic_crud.add_topic(self.db, new_topic, topic_slug)
+        return new_topic.name
+
+    def generate_script(self, topic_id: int):
+        try:
+            topic = topic_crud.get_unused_topic(self.db, id=topic_id)
+            if not topic:
+                raise ValueError("Topic not found, may be all topics are used.")
+
+            content = {"title": topic.name}
+            script = self.llm_service.generate_script(topic.name)
             logger.info(f"Script processed: {len(script.split())} words.")
             content["content"] = script
             content["status"] = ContentStatus.DRAFT
             new_content = content_crud.create_content(self.db, content)
+            topic_crud.update_topic(self.db, topic)
             return new_content
         except Exception as e:
             logger.error(f"Failed to generate script: {str(e)}")
-            raise Exception("Failed to generate script")
+            raise Exception(f"Failed to generate content: {str(e)}")
 
     def generate_audio_from_content(self, content_id: int) -> dict:
         content = content_crud.get_content(self.db, content_id)
@@ -48,8 +68,8 @@ class ScriptService(BaseService):
         try:
             response = self.elevenlab_service.generate_speech_file(content)
         except Exception as e:
-            logger.error(f"Failed to generate script: {str(e)}")
-            raise Exception("Failed to generate script")
+            logger.error(f"Failed to generate audio: {str(e)}")
+            raise Exception(f"Failed to generate audio: {str(e)}")
 
         content_crud.update_content(
             self.db,
@@ -77,12 +97,16 @@ class ScriptService(BaseService):
         content_text = short_video.content.content
 
         # generate metadata
-        metadata = self.llm_service.generate_metadata(content_text)
-        metadata_dict = (
-            metadata.model_dump()
-            if hasattr(metadata, "model_dump")
-            else metadata.dict()
-        )
+        try:
+            metadata = self.llm_service.generate_metadata(content_text)
+            metadata_dict = (
+                metadata.model_dump()
+                if hasattr(metadata, "model_dump")
+                else metadata.dict()
+            )
+        except Exception as e:
+            logger.error(f"Failed to generate metadata: {str(e)}")
+            raise Exception(f"Failed to generate metadata: {str(e)}")
 
         updated_short_video = short_video_crud.update_short_video(
             self.db, short_video, metadata_dict
@@ -137,4 +161,4 @@ class ScriptService(BaseService):
             return response
         except Exception as e:
             logger.error(f"Failed to upload video: {str(e)}")
-            raise Exception("Failed to upload video")
+            raise Exception(f"Failed to upload video: {str(e)}")

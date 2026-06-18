@@ -1,6 +1,10 @@
 from src.services.base import BaseService
 from utils.logger import logger
-from src.sql.cruds import content as content_crud, short_video as short_video_crud
+from src.sql.cruds import (
+    content as content_crud,
+    short_video as short_video_crud,
+    topic as topic_crud,
+)
 from src.enums import short_video as short_video_status, content as content_status
 from src.services.script import ScriptService
 from src.services.video_merge import VideoMergeService
@@ -74,16 +78,29 @@ class AutomationService(BaseService):
             logger.error(f"Error 3: Internal server error: {str(e)}")
             return
 
+    def generate_topic(self):
+        try:
+            logger.info(f"Starting to generate topic")
+            logger.info(f"Step 1/2: Generating topic")
+            topic = self.script_service.generate_topic()
+            logger.info(f"Step 2/2: Generated topic: '{topic}'")
+        except Exception as e:
+            logger.error(f"Error 3: Internal server error: {str(e)}")
+            return
+
     def create_content(self):
         logger.info(f"Starting to create content")
-        logger.info(f"Step 1/3: Generating topic")
-        topic = self.script_service.generate_topic()
-        logger.info(f"Step 2/3: Generated topic: '{topic}'")
+        logger.info(f"Step 1/3: Getting topic")
+        topic = topic_crud.get_unused_topic(self.db)
+        logger.info(f"Step 2/3: Got topic: {topic}")
 
         try:
+            if not topic:
+                logger.info(f"No topic found to process")
+                return
             logger.info(f"Step 3/3: Creating content with topic")
-            content = self.script_service.generate_script(topic)
-            logger.info(f"Step 4/4: Created content with topic: '{topic}'")
+            self.script_service.generate_script(topic.id)
+            logger.info(f"Step 3/3: Created content with topic: '{topic.name}'")
         except Exception as e:
             logger.error(f"Error 4: Internal server error: {str(e)}")
             return
@@ -187,7 +204,10 @@ class AutomationService(BaseService):
             logger.info(f"Step 3/4: Cleaning last 7 days contents")
             for content in contents:
                 logger.info(f"Checking content {content.id}")
-                if len(content.short_video) == 0 or content.status == content_status.ContentStatus.ERROR:
+                if (
+                    len(content.short_video) == 0
+                    or content.status == content_status.ContentStatus.ERROR
+                ):
                     logger.info(f"Cleaning content {content.id}")
                     if content.audio_path is not None:
                         os.remove(content.audio_path)
