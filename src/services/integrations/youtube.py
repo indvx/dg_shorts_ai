@@ -35,7 +35,7 @@ class YouTubeService(BaseService):
                 logger.info("No valid token session found. Launching local interactive auth browser...")
                 if not os.path.exists(self.google_secret_file):
                     logger.critical(f"Missing critical OAuth secret configuration file at: {self.google_secret_file}")
-                    raise FileNotFoundError("Please place client_secret.json inside src/services/")
+                    raise FileNotFoundError(f"Please place client_secret.json at: {self.google_secret_file}")
                 
                 flow = InstalledAppFlow.from_client_secrets_file(self.google_secret_file, self.scopes)
                 credentials = flow.run_local_server(port=0)

@@ -1,6 +1,15 @@
-# DGShorts AI — Enterprise YouTube Shorts Automation Backend Engine 🚀
+# YouTube Shorts Auto-Creator (DGShorts AI) 🎥🤖
 
-DGShorts AI is a production-ready, asynchronous, object-oriented YouTube Shorts generation and distribution platform. Designed with modularity, scalability, and error-resilience, this platform automates the entire content creation lifecycle—converting dynamic topics into fully formatted, looped, sound-isolated, and SEO-optimized vertical videos posted directly to YouTube.
+DGShorts AI is a tool that automatically creates and uploads YouTube Shorts. You give it a topic (or let it choose one), and it automatically:
+
+1. **Generates a script** in simple Hindi using AI (Gemini or OpenAI).
+2. **Converts the script to voice** narration using ElevenLabs.
+3. **Finds matching background videos** on Pexels.
+4. **Stitches them together** into a final vertical video (YouTube Short).
+5. **Generates SEO metadata** (Title, Description, Tags) using AI.
+6. **Uploads the video** directly to your YouTube channel.
+
+You can trigger this manually using the API or let it run automatically in the background on a daily schedule.
 
 ---
 
@@ -382,6 +391,18 @@ sequenceDiagram
     end
 
     rect rgb(240, 240, 240)
+    note right of S: Daily at 12:00 AM: clean_last_7_days_log_file
+    S->>S: Remove log files older than 7 days
+    end
+
+    rect rgb(245, 245, 245)
+    note right of S: Daily at 12:10 AM: clean_last_7_days_contents
+    S->>DB: Fetch Content records older than 7 days
+    S->>S: Remove local .mp3 and .mp4 files (for ERROR/orphaned Content)
+    S->>DB: Delete Content records
+    end
+
+    rect rgb(235, 235, 235)
     note right of S: Daily at 12:30 AM: clean_uploaded_video
     S->>DB: Fetch PUBLISHED ShortVideos
     S->>S: Delete local .mp3 and .mp4 files
@@ -397,6 +418,7 @@ sequenceDiagram
 * **Video Compilation & Overlay (`merge_video_and_audio`):** Runs at **10:33 AM, 3:33 PM, 6:33 PM, and 8:33 PM** daily. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track, write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `MERGED`).
 * **Metadata Enrichment (`update_video_metadata`):** Runs at **10:34 AM, 3:34 PM, 6:34 PM, and 8:34 PM** daily. Fetches `NOT_STARTED` short videos and prompts the LLM to generate search-optimized Titles, Descriptions, and Hashtag Tag list arrays.
 * **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs at **10:35 AM, 3:35 PM, 6:35 PM, and 8:35 PM** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
+* **Content Record Retention (`clean_last_7_days_contents`):** Runs once daily at **12:10 AM**. Identifies database Content records older than 7 days that either failed (status `ERROR`) or were never published to YouTube, deletes their local speech and stock video files, and purges the Content records from the database.
 * **Local Workspace Cleanup (`clean_uploaded_video`):** Runs once daily at **12:30 AM**. Purges uploaded local files (`audio/`, `video/`, and final `output/`) and deletes Content & ShortVideo records for published videos from the database.
 * **Log Rotation (`clean_last_7_days_log_file`):** Runs once daily at **12:00 AM** (midnight) to clean archival log files in the `logs/` directory older than 7 days.
 
@@ -404,4 +426,4 @@ sequenceDiagram
 
 Created with ❤️ by **Dilip Goud**. Happy Automating!
 
-### [⬆ back to top](#dgshorts-ai--enterprise-youtube-shorts-automation-backend-engine-)
+### [⬆ back to top](#youtube-shorts-auto-creator-dgshorts-ai-)
