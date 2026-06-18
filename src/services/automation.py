@@ -59,13 +59,9 @@ class AutomationService(BaseService):
 
     def upload_video_on_youtube(self):
         logger.info(f"Starting to upload video to youtube")
-        try:
-            logger.info(f"Step 1/2: Getting video content")
-            short_video = short_video_crud.get_ready_to_upload_short_video(self.db)
-            logger.info(f"Step 2/2: Got video content")
-        except Exception as e:
-            logger.error(f"Error 3: Internal server error: {str(e)}")
-            return
+        logger.info(f"Step 1/2: Getting video content")
+        short_video = short_video_crud.get_ready_to_upload_short_video(self.db)
+        logger.info(f"Step 2/2: Got video content")
 
         try:
             if not short_video:
@@ -75,101 +71,85 @@ class AutomationService(BaseService):
             self.script_service.upload_video_to_youtube(short_video.id)
             logger.info(f"Step 4/4: Uploaded video to youtube")
         except Exception as e:
-            logger.error(f"Error 4: Internal server error: {str(e)}")
+            logger.error(f"Error 3: Internal server error: {str(e)}")
             return
 
     def create_content(self):
         logger.info(f"Starting to create content")
-        try:
-            logger.info(f"Step 1/3: Generating topic")
-            topic = self.script_service.generate_topic()
-            logger.info(f"Step 2/3: Generated topic: '{topic}'")
-        except Exception as e:
-            logger.error(f"Error 5: Internal server error: {str(e)}")
-            return
+        logger.info(f"Step 1/3: Generating topic")
+        topic = self.script_service.generate_topic()
+        logger.info(f"Step 2/3: Generated topic: '{topic}'")
 
         try:
             logger.info(f"Step 3/3: Creating content with topic")
             content = self.script_service.generate_script(topic)
             logger.info(f"Step 4/4: Created content with topic: '{topic}'")
         except Exception as e:
-            logger.error(f"Error 6: Internal server error: {str(e)}")
+            logger.error(f"Error 4: Internal server error: {str(e)}")
             return
 
     def create_audio(self):
         logger.info(f"Starting to create audio")
-        try:
-            logger.info(f"Step 1/2: Getting content")
-            excluded_statuses = [
-                content_status.ContentStatus.AUDIO_GENERATED,
-                content_status.ContentStatus.VIDEO_GENERATED,
-                content_status.ContentStatus.MERGED,
-                content_status.ContentStatus.ERROR,
-            ]
-            content = content_crud.get_ready_to_process_content(
-                self.db, excluded_statuses, excluded=True
-            )
-            logger.info(f"Step 2/2: Got content")
-        except Exception as e:
-            logger.error(f"Error 7: Internal server error: {str(e)}")
-            return
+        logger.info(f"Step 1/4: Getting content")
+        excluded_statuses = [
+            content_status.ContentStatus.AUDIO_GENERATED,
+            content_status.ContentStatus.VIDEO_GENERATED,
+            content_status.ContentStatus.MERGED,
+            content_status.ContentStatus.ERROR,
+        ]
+        content = content_crud.get_ready_to_process_content(
+            self.db, excluded_statuses, excluded=True
+        )
 
         try:
             if not content:
                 logger.info(f"No content found to process")
                 return
+            logger.info(f"Step 2/4: Got content")
             logger.info(f"Step 3/4: Generating audio for content")
             self.script_service.generate_audio_from_content(content_id=content.id)
             logger.info(f"Step 4/4: Generated audio for content")
         except Exception as e:
-            logger.error(f"Error 8: Internal server error: {str(e)}")
+            logger.error(f"Error 5: Internal server error: {str(e)}")
             return
 
     def fetch_and_generate_video(self):
         logger.info(f"Starting to fetch and generate video")
-        try:
-            target_statuses = [content_status.ContentStatus.AUDIO_GENERATED]
-            logger.info(f"Step 1/2: Getting content")
-            content = content_crud.get_ready_to_process_content(
-                self.db, target_statuses, excluded=False
-            )
-            logger.info(f"Step 2/2: Got content")
-        except Exception as e:
-            logger.error(f"Error 9: Internal server error: {str(e)}")
-            return
+        target_statuses = [content_status.ContentStatus.AUDIO_GENERATED]
+        logger.info(f"Step 1/2: Getting content")
+        content = content_crud.get_ready_to_process_content(
+            self.db, target_statuses, excluded=False
+        )
 
         try:
             if not content:
                 logger.error(f"No content found to process")
                 return
+            logger.info(f"Step 2/4: Got content")
             logger.info(f"Step 3/4: Fetching and generating video for content")
             self.video_generator_service.fetch_and_download_background(
                 content_id=content.id
             )
             logger.info(f"Step 4/4: Fetched and generated video for content")
         except Exception as e:
-            logger.error(f"Error 10: Internal server error: {str(e)}")
+            logger.error(f"Error 6: Internal server error: {str(e)}")
             return
 
     def merge_video_and_audio(self):
         logger.info(f"Starting to merge video and audio")
-        try:
-            logger.info(f"Step 1/2: Getting content")
-            target_statuses = [
-                content_status.ContentStatus.VIDEO_GENERATED,
-            ]
-            content = content_crud.get_ready_to_process_content(
-                self.db, target_statuses, excluded=False
-            )
-            logger.info(f"Step 2/2: Got content")
-        except Exception as e:
-            logger.error(f"Error 11: Internal server error: {str(e)}")
-            return
+        logger.info(f"Step 1/4: Getting content")
+        target_statuses = [
+            content_status.ContentStatus.VIDEO_GENERATED,
+        ]
+        content = content_crud.get_ready_to_process_content(
+            self.db, target_statuses, excluded=False
+        )
 
         try:
             if not content:
                 logger.error(f"No content found to process")
                 return
+            logger.info(f"Step 2/4: Got content")
             logger.info(f"Step 3/4: Merging video and audio for content")
             self.video_merge_service.merge_and_mute_video(content_id=content.id)
             logger.info(f"Step 4/4: Merged video and audio for content")
@@ -179,33 +159,25 @@ class AutomationService(BaseService):
 
     def update_video_metadata(self):
         logger.info(f"Starting to update video metadata")
-        try:
-            logger.info(f"Step 1/2: Getting content")
-            short_video = short_video_crud.get_ready_to_metadata_short_video(self.db)
-            logger.info(f"Step 2/2: Got content")
-        except Exception as e:
-            logger.error(f"Error 13: Internal server error: {str(e)}")
-            return
+        logger.info(f"Step 1/4: Getting content")
+        short_video = short_video_crud.get_ready_to_metadata_short_video(self.db)
 
         try:
             if not short_video:
                 logger.info(f"No short video found to process")
                 return
+            logger.info(f"Step 2/4: Got content")
             logger.info(f"Step 3/4: Updating video metadata for content")
             self.script_service.update_video_content_metadata(short_video.id)
             logger.info(f"Step 4/4: Updated video metadata for content")
         except Exception as e:
-            logger.error(f"Error 14: Internal server error: {str(e)}")
+            logger.error(f"Error 7: Internal server error: {str(e)}")
             return
 
     def clean_last_7_days_contents(self):
-        try:
-            logger.info(f"Step 1/2: Getting contents")
-            contents = content_crud.get_all_contents(self.db, days=7)
-            logger.info(f"Step 2/2: Got contents {len(contents)}")
-        except Exception as e:
-            logger.error(f"Error 15: Internal server error: {str(e)}")
-            return
+        logger.info(f"Step 1/4: Getting contents")
+        contents = content_crud.get_all_contents(self.db, days=7)
+        logger.info(f"Step 2/4: Got contents {len(contents)}")
 
         try:
             if len(contents) == 0:
@@ -227,5 +199,5 @@ class AutomationService(BaseService):
                     logger.info(f"Cleaned content {content.id}")
             logger.info(f"Step 4/4: Cleaned last 7 days contents")
         except Exception as e:
-            logger.error(f"Error 16: Internal server error: {str(e)}")
+            logger.error(f"Error 8: Internal server error: {str(e)}")
             return
