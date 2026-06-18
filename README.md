@@ -426,4 +426,4 @@ sequenceDiagram
 
 Created with ❤️ by **Dilip Goud**. Happy Automating!
 
-### [⬆ back to top](#youtube-shorts-auto-creator-dgshorts-ai-)
+### [⬆ back to top](#youtube-shorts-auto-creator-dgshorts-ai)
