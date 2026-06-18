@@ -1,4 +1,4 @@
-# YouTube Shorts Auto-Creator (DGShorts AI) 🎥🤖
+# YouTube Shorts Auto-Creator (DGShorts AI)
 
 DGShorts AI is a tool that automatically creates and uploads YouTube Shorts. You give it a topic (or let it choose one), and it automatically:
 
