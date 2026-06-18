@@ -36,7 +36,7 @@ class VideoGeneratorService(BaseService):
             logger.info(f"Downloading binary stream from Pexels CDN...")
             video_data = requests.get(download_url, stream=True, timeout=30)
 
-            filename = f"{content.audio_path.split("/")[-1].replace(".mp3", ".mp4")}"
+            filename = f"{content.audio_path.split('/')[-1].replace('.mp3', '.mp4')}"
             os.makedirs(self.video_directory, exist_ok=True)
             download_path = os.path.join(self.video_directory, filename)
             with open(download_path, "wb") as f:
