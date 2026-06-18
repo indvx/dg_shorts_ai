@@ -6,12 +6,12 @@ import os
 load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = "{}://{}:{}@{}:{}/{}".format(
-    os.getenv("DB_CONNECTION", default="mysql+pymysql"),
-    os.getenv("DB_USER", default="root"),
-    os.getenv("DB_PASSWORD", default="root"),
-    os.getenv("DB_HOST", default="localhost"),
-    os.getenv("DB_PORT", default="3306"),
-    os.getenv("DB_NAME", default="python"),
+    os.getenv("DB_CONNECTION"),
+    os.getenv("DB_USER"),
+    os.getenv("DB_PASSWORD"),
+    os.getenv("DB_HOST"),
+    os.getenv("DB_PORT"),
+    os.getenv("DB_NAME"),
 )
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)

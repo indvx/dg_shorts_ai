@@ -23,8 +23,8 @@ class LLMService(BaseService):
 
         self.gemini_client = None
         self.openai_client = None
-        self.model_name = os.getenv("AI_MODEL_NAME", "gemini-2.5-flash")
-        self.provider = os.getenv("AI_PROVIDER_NAME", "gemini")
+        self.model_name = os.getenv("AI_MODEL_NAME")
+        self.provider = os.getenv("AI_PROVIDER_NAME")
         self.api_key = os.getenv("AI_API_KEY")
 
         logger.info(f"AI Provider: {self.provider}")
