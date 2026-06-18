@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import HTTPException
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from src.api.v1 import logs, content, video
+from src.api.v1 import logs, content, video, topic
 from src.jobs import automation_jobs
 from src.db.session import jobstores
 from utils.logger import logger
@@ -17,6 +17,8 @@ app = FastAPI(
 app.include_router(logs.router, prefix="/api")
 app.include_router(content.router, prefix="/api")
 app.include_router(video.router, prefix="/api")
+app.include_router(topic.router, prefix="/api")
+
 
 scheduler = BackgroundScheduler(jobstores=jobstores)
 scheduler.start()
@@ -141,9 +143,11 @@ def shutdown_event():
     scheduler.shutdown()
     logger.info("Application shutdown")
 
+
 @app.get("/api/v1/health")
 def health_check():
     return {"status": "ok"}
+
 
 @app.get("/api/v1/jobs", response_model=list[JobResponseSchema], tags=["Jobs"])
 def get_jobs():
@@ -160,5 +164,3 @@ def get_jobs():
     except Exception as e:
         logger.error(f"Error getting jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"{str(e)}")
-
-

@@ -20,19 +20,19 @@ class ScriptService(BaseService):
         self.llm_service = LLMService()
         self.elevenlab_service = ElevenLabsService()
 
-    def generate_topic(self, topic: str | None = None) -> str:
+    def generate_topic(self, topic: str | None = None):
         try:
             new_topic = self.llm_service.generate_topic(topic)
         except Exception as e:
             logger.error(f"Failed to generate topic: {str(e)}")
             raise Exception(f"Failed to generate topic: {str(e)}")
-        
+
         topic_slug = self.get_topic_slug(new_topic)
         existing = topic_crud.get_topic_by_slug(self.db, topic_slug)
         if existing:
-            return existing.name
+            return existing
         new_topic = topic_crud.add_topic(self.db, new_topic, topic_slug)
-        return new_topic.name
+        return new_topic
 
     def generate_script(self, topic_id: int):
         try:
