@@ -27,7 +27,7 @@ def get_short_video_by_content_id(db: Session, content_id: int) -> ShortVideo:
     return db.query(ShortVideo).filter(ShortVideo.content_id == content_id).first()
 
 
-def get_ready_to_upload_short_video(db: Session) -> ShortVideo | None:
+def get_ready_to_upload_short_video(db: Session) -> ShortVideo:
     return (
         db.query(ShortVideo)
         .filter(
@@ -39,7 +39,8 @@ def get_ready_to_upload_short_video(db: Session) -> ShortVideo | None:
         .first()
     )
 
-def get_ready_to_metadata_short_video(db: Session) -> ShortVideo | None:
+
+def get_ready_to_metadata_short_video(db: Session) -> ShortVideo:
     return (
         db.query(ShortVideo)
         .filter(

@@ -72,14 +72,34 @@ class LLMService(BaseService):
 
     def generate_script(self, topic: str) -> str:
         prompt = f"""
-            Write a 50-word YouTube Shorts script in simple Hindi.
+            You are an elite YouTube Shorts writer.
+
             Topic: {topic}
+
+            Goal:
+            Maximize retention and rewatch rate.
+
             Rules:
-                - Only narration text
-                - No emojis
-                - No scene instructions
-                - No labels
-                - Natural spoken style
+            - 55-75 words
+            - First line must create shock, surprise, or curiosity
+            - Never reveal the answer immediately
+            - Every sentence should create a new question
+            - Build suspense continuously
+            - Use simple Hindi
+            - Keep sentences short
+            - Final line must deliver the payoff
+            - End with a thought-provoking statement
+
+            Formula:
+            Hook
+            +
+            Mystery
+            +
+            Escalation
+            +
+            Reveal
+
+            Return ONLY narration text.
             """
         return self._generate(prompt)
 
@@ -88,16 +108,36 @@ class LLMService(BaseService):
             Return ONLY valid JSON.
             Schema:
             {{
-                "title": "string",
-                "description": "string",
-                "hashtags": ["tag1", "tag2", "tag3"]
+            "title": "string",
+            "description": "string",
+            "hashtags": ["tag1", "tag2", "tag3"]
             }}
-            Rules:
-                - Generate a catchy, click-worthy title for the YouTube Short based on the content.
-                - Generate an engaging description summarizing the content.
-                - Generate 3 to 5 relevant hashtags (without the '#' symbol) based on the content and place them in the 'hashtags' list.
-                - Return ONLY the JSON object. No extra text, no markdown block, no explanation.
-            Content: {content}
+
+            Content:
+            {content}
+
+            Requirements:
+
+            TITLE:
+            - Maximum 55 characters
+            - Curiosity-driven
+            - High click-through rate
+            - No clickbait
+            - No emojis
+            - Must create urgency or intrigue
+
+            DESCRIPTION:
+            - 1-2 short sentences
+            - Summarize the video
+            - Encourage engagement naturally
+
+            HASHTAGS:
+            - Generate 5 relevant hashtags
+            - No # symbol
+            - Include niche hashtags
+            - Include one broad viral hashtag
+
+            Return ONLY JSON.
         """
 
         raw = self._generate(prompt)
@@ -118,12 +158,32 @@ class LLMService(BaseService):
         )
 
         prompt = f"""
-            Generate ONE viral YouTube Shorts topic.
+            You are a viral YouTube Shorts strategist.
+
+            Generate ONE highly viral Shorts topic.
+
             Requirements:
-                - Curiosity driven
-                - 30–60 second video
-                - Catchy and short
-                - Return ONLY topic text
+            - Must trigger curiosity
+            - Must sound surprising
+            - Must be fact-based
+            - Suitable for a 30-60 second video
+            - Must have potential for high retention
+            - Must make viewers think "Wait, really?"
+            - Avoid generic motivation topics
+            - Avoid celebrity gossip
+            - Prefer:
+            - AI
+            - Technology
+            - Science
+            - Space
+            - Psychology
+            - History
+            - Mystery facts
+            - Business secrets
+
+            Return ONLY the topic text.
+
+            Categories:
             {category_text}
         """
         return self._generate(prompt)

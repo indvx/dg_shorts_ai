@@ -1,18 +1,26 @@
 from src.services.base import BaseService
 from utils.logger import logger
 
-from moviepy import VideoFileClip, AudioFileClip, concatenate_videoclips
+from moviepy import (
+    VideoFileClip,
+    AudioFileClip,
+    concatenate_videoclips,
+    CompositeAudioClip,
+)
+from moviepy.audio.fx import AudioLoop, MultiplyVolume, AudioFadeIn, AudioFadeOut
 from src.sql.cruds import content as content_crud
 from src.sql.cruds import short_video as short_video_crud
 from src.enums.content import ContentStatus
 from src.enums.short_video import ShortVideoStatus
 import math
-import os
+import os, random
+
 
 class VideoMergeService(BaseService):
     def __init__(self):
         super().__init__()
         self.output_directory = os.getenv("VIDEO_OUTPUT_DIRECTORY", "data/output")
+        self.music_directory = os.getenv("MUSIC_DIRECTORY", "data/music")
 
     def merge_and_mute_video(self, content_id: int):
         logger.info(f"Audio-Video Stitching Module started... {content_id}")
@@ -34,20 +42,37 @@ class VideoMergeService(BaseService):
         video_clip = None
         audio_clip = None
         final_clip = None
+        music_clip = None
+        final_audio = None
+        base_video = None
 
         try:
             audio_clip = AudioFileClip(content.audio_path)
             audio_duration = audio_clip.duration
-            logger.info(f"Target Audio Duration: {audio_duration:.2f} seconds.")
+
+            music_name = random.choice(os.listdir(self.music_directory))
+            music_clip = AudioFileClip(os.path.join(self.music_directory, music_name))
+            music_clip = music_clip.with_effects(
+                [
+                    AudioLoop(duration=audio_duration),
+                    MultiplyVolume(0.12),
+                    AudioFadeIn(1),
+                    AudioFadeOut(2),
+                ]
+            )
+
+            final_audio = CompositeAudioClip([audio_clip, music_clip])
+
+            logger.info(f"Target Audio Duration: {final_audio.duration:.2f} seconds.")
 
             base_video = VideoFileClip(content.video_path).without_audio()
             video_duration = base_video.duration
             logger.info(f"Raw Background Video Duration: {video_duration:.2f} seconds.")
 
-            if video_duration < audio_duration:
-                loop_factor = math.ceil(audio_duration / video_duration)
+            if video_duration < final_audio.duration:
+                loop_factor = math.ceil(final_audio.duration / video_duration)
                 logger.warning(
-                    f"Duration Warning! Audio ({audio_duration:.2f}s) is longer than Video ({video_duration:.2f}s). "
+                    f"Duration Warning! Audio ({final_audio.duration:.2f}s) is longer than Video ({video_duration:.2f}s). "
                     f"Chaining video sequentially [{loop_factor} times] to extend timeline..."
                 )
 
@@ -58,9 +83,9 @@ class VideoMergeService(BaseService):
                 logger.info("Video length is sufficient for the audio track.")
                 video_clip = base_video
 
-            trimmed_video = video_clip.subclipped(0, audio_duration)
+            trimmed_video = video_clip.subclipped(0, final_audio.duration)
 
-            final_clip = trimmed_video.with_audio(audio_clip)
+            final_clip = trimmed_video.with_audio(final_audio)
 
             logger.info(
                 f"Rendering loop-stabilized isolated video container: {output_path}"
