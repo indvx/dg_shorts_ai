@@ -100,7 +100,7 @@ class LLMService(BaseService):
             Reveal
 
             Return ONLY narration text.
-            """
+        """
         return self._generate(prompt)
 
     def generate_metadata(self, content: str) -> VideoMetadata:

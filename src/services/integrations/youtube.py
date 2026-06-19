@@ -10,7 +10,7 @@ from src.services.base import BaseService
 class YouTubeService(BaseService):
     def __init__(self):
         super().__init__()
-        scopes_raw = os.getenv("YOUTUBE_SCOPES", "https://www.googleapis.com/auth/youtube.upload")
+        scopes_raw = os.getenv("YOUTUBE_SCOPES")
         if scopes_raw:
             self.scopes = [ s.strip() for s in scopes_raw.split(",") if s.strip()]
         else:

@@ -11,7 +11,7 @@ class ElevenLabsService(BaseService):
         super().__init__()
         self.api_key = os.getenv("ELEVENLABS_API_KEY")
         self._elevenlabs = ElevenLabs(api_key=self.api_key)
-        self.audio_directory = os.getenv("AUDIO_DIRECTORY", "data/audio")
+        self.audio_directory = os.getenv("AUDIO_DIRECTORY")
         self.voice_id = os.getenv("VOICE_ID")
 
     def generate_speech_file(self, content) -> str:

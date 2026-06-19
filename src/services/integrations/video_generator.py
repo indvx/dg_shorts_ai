@@ -11,7 +11,7 @@ class VideoGeneratorService(BaseService):
         super().__init__()
         self.api_url = os.getenv("PEXELS_API_URL")
         self.api_key = os.getenv("PEXELS_API_KEY")
-        self.video_directory = os.getenv("VIDEO_DIRECTORY", "data/video")
+        self.video_directory = os.getenv("VIDEO_DIRECTORY")
 
     def fetch_and_download_background(self, content_id: int) -> str:
         content = content_crud.get_content(self.db, content_id)

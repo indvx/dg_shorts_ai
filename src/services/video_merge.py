@@ -19,8 +19,8 @@ import os, random
 class VideoMergeService(BaseService):
     def __init__(self):
         super().__init__()
-        self.output_directory = os.getenv("VIDEO_OUTPUT_DIRECTORY", "data/output")
-        self.music_directory = os.getenv("MUSIC_DIRECTORY", "data/music")
+        self.output_directory = os.getenv("VIDEO_OUTPUT_DIRECTORY")
+        self.music_directory = os.getenv("MUSIC_DIRECTORY")
 
     def merge_and_mute_video(self, content_id: int):
         logger.info(f"Audio-Video Stitching Module started... {content_id}")
@@ -38,6 +38,7 @@ class VideoMergeService(BaseService):
                 f"Content with id {content_id} is not in video generated state."
             )
         os.makedirs(self.output_directory, exist_ok=True)
+        os.makedirs(self.music_directory, exist_ok=True)
         output_path = content.video_path.replace("video", "output")
         video_clip = None
         audio_clip = None
@@ -76,9 +77,7 @@ class VideoMergeService(BaseService):
                     f"Chaining video sequentially [{loop_factor} times] to extend timeline..."
                 )
 
-                clips_pool = [base_video] * loop_factor
-                extended_video = concatenate_videoclips(clips_pool)
-                video_clip = extended_video
+                video_clip = concatenate_videoclips([base_video] * loop_factor)
             else:
                 logger.info("Video length is sufficient for the audio track.")
                 video_clip = base_video
