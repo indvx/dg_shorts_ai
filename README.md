@@ -23,13 +23,14 @@ The system is designed with a decoupled architecture. The background orchestrato
 graph TD
     A[Client API Request / APScheduler Trigger] -->|Start Job| B(FastAPI Router / Route Gateway)
     B --> C[Script Service / Coordinator]
-    C -->|1. Generate Script & Prompts| D[LLM Service <br> Gemini or OpenAI]
-    C -->|2. Synthesize Narrator Voice| E[ElevenLabs Voice Engine]
-    C -->|3. Fetch Background Loops| F[Pexels Video Generator Service]
-    C -->|4. Dynamic Render & Compile| G[Video Merge Service]
-    G -->|Mute, Trim & loop background| H[Output Media Compiler]
-    H -->|5. SEO Metadata Enrichment| I[LLM Service JSON Output]
-    I -->|6. Broadcast Publish & Upload| J[YouTube API v3 Service]
+    C -->|1. Generate Topic & Track in DB| D1[LLM Service / Topic Engine]
+    C -->|2. Generate Script from Topic| D2[LLM Service / Writer Engine]
+    C -->|3. Synthesize Narrator Voice| E[ElevenLabs Voice Engine]
+    C -->|4. Fetch Background Loops| F[Pexels Video Generator Service]
+    C -->|5. Dynamic Render, Mix Music & Compile| G[Video Merge Service]
+    G -->|Mute, Loop video & Blend background music| H[Output Media Compiler]
+    H -->|6. SEO Metadata Enrichment| I[LLM Service JSON Output]
+    I -->|7. Broadcast Publish & Upload| J[YouTube API v3 Service]
     J -->|Complete| K[Live YouTube Short Post]
 ```
 
@@ -39,10 +40,19 @@ graph TD
 
 The persistence layer uses a PostgreSQL database managed via SQLAlchemy and Alembic. Below is the schema layout mapping the content creation state:
 
-### 1. `contents` Table
+### 1. `topics` Table
+This table stores generated topics to track usage history and avoid repetitive content.
+* **`id`** (`Integer`, Primary Key, Index): Unique ID of the topic.
+* **`name`** (`String(255)`, Not Null, Unique): The generated topic name or category.
+* **`slug`** (`String(255)`, Not Null, Unique): URL-friendly slug representing the topic.
+* **`used_count`** (`Integer`, Not Null, Default: `0`): The number of times this topic has been used.
+* **`last_used_at`** (`DateTime`, Nullable): The last time this topic was picked for content generation.
+* **`created_at`** / **`updated_at`** (`DateTime`): Operational audit timestamps.
+
+### 2. `contents` Table
 This table stores the text transcripts and intermediate media paths.
 * **`id`** (`Integer`, Primary Key, Index): Unique ID of the content job.
-* **`title`** (`String(255)`, Not Null): Generated topic or user-provided seed.
+* **`title`** (`String(255)`, Not Null): Generated topic name (referenced from `topics.name`).
 * **`content`** (`Text`, Not Null): Synthesized narration script (typically Hindi).
 * **`voice_id`** (`String(255)`, Nullable, Default: `JBFqnCBsd6RMkjVDRZzb`): ElevenLabs voice identifier.
 * **`status`** (`Enum(ContentStatus)`, Default: `DRAFT`): Current workflow state.
@@ -50,7 +60,7 @@ This table stores the text transcripts and intermediate media paths.
 * **`video_path`** (`String(255)`, Nullable): Path to the downloaded Pexels stock video.
 * **`created_at`** / **`updated_at`** (`DateTime`): Operational audit timestamps.
 
-### 2. `short_videos` Table
+### 3. `short_videos` Table
 This table maps compiled video artifacts and their publication metadata.
 * **`id`** (`Integer`, Primary Key, Index): Unique ID of the short video record.
 * **`content_id`** (`Integer`, ForeignKey `contents.id`, Not Null): Associated script reference.
@@ -218,10 +228,11 @@ GOOGLE_CLIENT_SECRET='config/secret/client_secret.json'
 GOOGLE_TOKEN_PICKLE='config/secret/token.pickle'
 YOUTUBE_SCOPES='https://www.googleapis.com/auth/youtube.upload'
 
-# Directory Settings (Optional overrides)
+# Directory Settings (Mandatory, no defaults)
 AUDIO_DIRECTORY='data/audio'
 VIDEO_DIRECTORY='data/video'
 VIDEO_OUTPUT_DIRECTORY='data/output'
+MUSIC_DIRECTORY='data/music'
 ```
 
 ---
@@ -266,7 +277,16 @@ Pexels offers portrait stock videos under copyright-free CC0 licenses.
 
 ---
 
-## 📺 Step 6: YouTube API v3 Credentials Setup (OAuth Handshake)
+## 🎙️ Step 6: Background Music Library Setup
+
+The engine automatically selects, loops, and mixes background music tracks into the final render clip.
+1. Create a folder named `music` inside `data` (or the folder configured as your `MUSIC_DIRECTORY`): `mkdir -p data/music`.
+2. Place your copyright-free background music tracks (e.g. `.mp3` or `.wav` format) in this folder.
+3. The video merging compiler will randomly pick one of these tracks during compilation, loop it to match the narration duration, reduce its volume by default to `12%` (`0.12`), and apply a 1-second fade-in and 2-second fade-out.
+
+---
+
+## 📺 Step 7: YouTube API v3 Credentials Setup (OAuth Handshake)
 
 To upload videos without manual intervention, Google requires desktop OAuth verification.
 
@@ -314,22 +334,24 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser to
 
 | Method | Endpoint | Description | Payload / Params |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/api/v1/content/generate-script` | Generates a Hindi script about a topic and creates a draft Content record. | `{"topic": "string"}` |
+| **POST** | `/api/v1/topic/` | Generates a viral topic via LLM Service and stores/tracks it in the database. | `{"name": "category/seed"}` |
+| **POST** | `/api/v1/content/generate-script` | Generates a Hindi script about a stored topic ID and creates a draft Content record. | `{"topic_id": int}` |
 | **POST** | `/api/v1/content/text/{content_id}/generate-audio` | Converts script text to speech audio via ElevenLabs. | `content_id` (path parameter) |
 | **POST** | `/api/v1/video/content/{content_id}/generate-video` | Fetches vertical matching background video from Pexels. | `content_id` (path parameter) |
-| **POST** | `/api/v1/video/content/{content_id}/merge-video` | Merges audio and video, loops/clips video as needed, and creates a ShortVideo. | `content_id` (path parameter) |
+| **POST** | `/api/v1/video/content/{content_id}/merge-video` | Merges narration audio, downloads vertical background video, mixes background music, and creates a ShortVideo. | `content_id` (path parameter) |
 | **POST** | `/api/v1/video/video/{video_id}/metadata` | Generates Title, Description, and Tags via LLM. | `video_id` (path parameter) |
 | **POST** | `/api/v1/video/video/{video_id}/publish` | Direct-uploads the compiled video onto YouTube via API. | `video_id` (path parameter) |
 | **GET** | `/api/v1/logs/current` | Fetches the last 500 lines of today's live execution log. | - |
 | **GET** | `/api/v1/logs/filter` | Fetches historical log file archives. | `?date=YYYY-MM-DD` (query parameter) |
+| **GET** | `/api/v1/jobs` | Gets status and timing details of scheduled background jobs. | - |
 
 ---
 
 ## 📅 Background Orchestrator & Task Scheduling
 
-The FastAPI backend runs `APScheduler` in `main.py` to drive a decoupled, step-by-step queue pipeline. This prevents database and network blockages while safely distributing intensive media tasks.
+The FastAPI backend runs `APScheduler` (configured with a persistent `SQLAlchemyJobStore` to survive restarts) in `main.py` to drive a decoupled, step-by-step queue pipeline. This prevents database and network blockages while safely distributing intensive media tasks.
 
-The pipeline runs 4 times a day (at hours **10:30 (10:30 AM)**, **15:30 (3:30 PM)**, **18:30 (6:30 PM)**, and **20:30 (8:30 PM)**) with a sequential 1-minute delay sequence to ensure tasks execute in logical order.
+The pipeline runs 4 times a day (at hours **7:00 AM, 12:00 PM, 5:00 PM, and 7:00 PM** local server time) with a staggered step-by-step delay sequence to ensure tasks execute in logical order.
 
 ### Queue Execution Lifecycle
 
@@ -344,50 +366,58 @@ sequenceDiagram
     participant YT as YouTube API
     
     rect rgb(240, 240, 255)
-    note right of S: Run at H:30: create_content
-    S->>LLM: Generate viral topic & script
-    LLM-->>S: Title & script (Hindi text)
-    S->>DB: Save Content as DRAFT
+    note right of S: Run at H:53: generate_topic
+    S->>LLM: Generate viral topic
+    LLM-->>S: Surprising/fact-based topic name
+    S->>DB: Add unique Topic to topics table
+    end
+
+    rect rgb(240, 240, 255)
+    note right of S: Run at H:54: create_content
+    S->>DB: Fetch unused Topic
+    S->>LLM: Generate 55-75 word retention-optimized Hindi script
+    LLM-->>S: Script text
+    S->>DB: Save Content as DRAFT & mark Topic used
     end
 
     rect rgb(240, 255, 240)
-    note right of S: Run at H:31: create_audio
+    note right of S: Run at H:55: create_audio
     S->>DB: Fetch DRAFT Content
     S->>EL: Synthesize script to speech
     EL-->>S: .mp3 file path
-    S->>DB: Update to AUDIO_GENERATED
+    S->>DB: Update Content to AUDIO_GENERATED
     end
 
     rect rgb(255, 240, 240)
-    note right of S: Run at H:32: fetch_and_generate_video
+    note right of S: Run at H:56: fetch_and_generate_video
     S->>DB: Fetch AUDIO_GENERATED Content
     S->>P: Fetch portrait stock video matching topic
     P-->>S: .mp4 template path
-    S->>DB: Update to VIDEO_GENERATED
+    S->>DB: Update Content to VIDEO_GENERATED
     end
 
     rect rgb(255, 255, 240)
-    note right of S: Run at H:33: merge_video_and_audio
+    note right of S: Run at H:58: merge_video_and_audio
     S->>DB: Fetch VIDEO_GENERATED Content
-    S->>MV: Loop stock video & overlay audio
-    MV-->>S: Output .mp4 path
+    S->>MV: Loop video, overlay audio, and blend random background music
+    MV-->>S: Final output .mp4 path
     S->>DB: Create ShortVideo (NOT_STARTED) & Content (MERGED)
     end
 
     rect rgb(240, 255, 255)
-    note right of S: Run at H:34: update_video_metadata
+    note right of S: Run at H:59: update_video_metadata
     S->>DB: Fetch ShortVideo (NOT_STARTED)
-    S->>LLM: Generate Title, Description, and Tags
-    LLM-->>S: Structured JSON Metadata
-    S->>DB: Save metadata
+    S->>LLM: Generate title, description, and hashtags (JSON)
+    LLM-->>S: Title, Description, and Tags metadata
+    S->>DB: Save metadata to ShortVideo
     end
 
     rect rgb(255, 240, 255)
-    note right of S: Run at H:35: upload_video_on_youtube
-    S->>DB: Fetch ready ShortVideo
-    S->>YT: Upload vertical short with metadata
+    note right of next hour H:00: upload_video_on_youtube
+    S->>DB: Fetch metadata-enriched ShortVideo
+    S->>YT: Upload vertical Short with metadata
     YT-->>S: Video ID response
-    S->>DB: Update to PUBLISHED / VIDEO_PUBLISHED
+    S->>DB: Update ShortVideo (PUBLISHED) & Content (VIDEO_PUBLISHED)
     end
 
     rect rgb(240, 240, 240)
@@ -405,19 +435,20 @@ sequenceDiagram
     rect rgb(235, 235, 235)
     note right of S: Daily at 12:30 AM: clean_uploaded_video
     S->>DB: Fetch PUBLISHED ShortVideos
-    S->>S: Delete local .mp3 and .mp4 files
+    S->>S: Delete local .mp3, .mp4, and output video files
     S->>DB: Delete Content & ShortVideo records
     end
 ```
 
 ### Scheduled Jobs Reference
 
-* **Script Content Generation (`create_content`):** Runs at **10:30 AM, 3:30 PM, 6:30 PM, and 8:30 PM** daily. Automatically selects a trending topic, generates a Hindi script using the LLM Service, and inserts a `DRAFT` status content record.
-* **Speech Synthesis (`create_audio`):** Runs at **10:31 AM, 3:31 PM, 6:31 PM, and 8:31 PM** daily. Pulls pending `DRAFT` content records and invokes ElevenLabs text-to-speech to save the voice narration audio locally under `data/audio/` (transitions state to `AUDIO_GENERATED`).
-* **Background Video Sourcing (`fetch_and_generate_video`):** Runs at **10:32 AM, 3:32 PM, 6:32 PM, and 8:32 PM** daily. Identifies contents with generated audio, searches Pexels for matching portrait stock videos, downloads the file to `data/video/`, and shifts state to `VIDEO_GENERATED`.
-* **Video Compilation & Overlay (`merge_video_and_audio`):** Runs at **10:33 AM, 3:33 PM, 6:33 PM, and 8:33 PM** daily. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track, write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `MERGED`).
-* **Metadata Enrichment (`update_video_metadata`):** Runs at **10:34 AM, 3:34 PM, 6:34 PM, and 8:34 PM** daily. Fetches `NOT_STARTED` short videos and prompts the LLM to generate search-optimized Titles, Descriptions, and Hashtag Tag list arrays.
-* **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs at **10:35 AM, 3:35 PM, 6:35 PM, and 8:35 PM** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
+* **Topic Auto-Generation (`generate_topic`):** Runs at **7:53 AM, 12:53 PM, 5:53 PM, and 7:53 PM** daily. Invokes the LLM to yield a fact-based viral niche topic and tracks it in the `topics` table.
+* **Script Content Generation (`create_content`):** Runs at **7:54 AM, 12:54 PM, 5:54 PM, and 7:54 PM** daily. Automatically selects an unused topic from the database, prompts the LLM to generate a suspenseful Hindi narration script, and inserts a `DRAFT` status content record.
+* **Speech Synthesis (`create_audio`):** Runs at **7:55 AM, 12:55 PM, 5:55 PM, and 7:55 PM** daily. Pulls pending `DRAFT` content records and invokes ElevenLabs text-to-speech to save the voice narration audio locally under `data/audio/` (transitions state to `AUDIO_GENERATED`).
+* **Background Video Sourcing (`fetch_and_generate_video`):** Runs at **7:56 AM, 12:56 PM, 5:56 PM, and 7:56 PM** daily. Identifies content with generated audio, searches Pexels for matching portrait stock videos, downloads the file to `data/video/`, and shifts state to `VIDEO_GENERATED`.
+* **Video Compilation, Loop & Audio Blend (`merge_video_and_audio`):** Runs at **7:58 AM, 12:58 PM, 5:58 PM, and 7:58 PM** daily. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track composite-mixed with a random background music file from `MUSIC_DIRECTORY` (volume set to `0.12` with fade-in/fade-out), write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `MERGED`).
+* **Metadata Enrichment (`update_video_metadata`):** Runs at **7:59 AM, 12:59 PM, 5:59 PM, and 7:59 PM** daily. Fetches `NOT_STARTED` short videos and prompts the LLM to generate click-worthy Titles, Descriptions, and Hashtag lists.
+* **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs at **8:00 AM, 1:00 PM, 6:00 PM, and 8:00 PM** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
 * **Content Record Retention (`clean_last_7_days_contents`):** Runs once daily at **12:10 AM**. Identifies database Content records older than 7 days that either failed (status `ERROR`) or were never published to YouTube, deletes their local speech and stock video files, and purges the Content records from the database.
 * **Local Workspace Cleanup (`clean_uploaded_video`):** Runs once daily at **12:30 AM**. Purges uploaded local files (`audio/`, `video/`, and final `output/`) and deletes Content & ShortVideo records for published videos from the database.
 * **Log Rotation (`clean_last_7_days_log_file`):** Runs once daily at **12:00 AM** (midnight) to clean archival log files in the `logs/` directory older than 7 days.
