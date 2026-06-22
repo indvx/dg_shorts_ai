@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.sql.models.short_video import ShortVideo
+from src.sql.models.content import Content
 from src.enums.short_video import ShortVideoStatus
 
 
@@ -11,7 +12,7 @@ def create_short_video(db: Session, short_video_data: dict):
     short_video = ShortVideo()
     short_video.content_id = short_video_data.get("content_id")
     short_video.title = short_video_data.get("title")
-    short_video.output_path = short_video_data.get("output_path")
+    short_video.background_video_url = short_video_data.get("background_video_url")
     short_video.status = short_video_data.get("status")
     db.add(short_video)
     db.commit()
@@ -31,7 +32,7 @@ def get_ready_to_upload_short_video(db: Session) -> ShortVideo:
     return (
         db.query(ShortVideo)
         .filter(
-            ShortVideo.status == ShortVideoStatus.NOT_STARTED,
+            ShortVideo.status == ShortVideoStatus.METADATA_GENERATED,
             ShortVideo.published_at == None,
             ShortVideo.tags != None,
             ShortVideo.description != None,
@@ -44,9 +45,9 @@ def get_ready_to_metadata_short_video(db: Session) -> ShortVideo:
     return (
         db.query(ShortVideo)
         .filter(
-            ShortVideo.status == ShortVideoStatus.NOT_STARTED,
+            ShortVideo.status == ShortVideoStatus.PROCESSING,
             ShortVideo.tags == None,
-            ShortVideo.youtube_video_path == None,
+            ShortVideo.youtube_video_url == None,
         )
         .first()
     )
@@ -73,8 +74,8 @@ def update_short_video(
             short_video.tags = ",".join(hashtags)
         else:
             short_video.tags = hashtags
-    if "youtube_video_path" in short_video_data:
-        short_video.youtube_video_path = short_video_data["youtube_video_path"]
+    if "youtube_video_url" in short_video_data:
+        short_video.youtube_video_url = short_video_data["youtube_video_url"]
     db.commit()
     db.refresh(short_video)
     return short_video
@@ -90,7 +91,7 @@ def get_all_short_videos(db: Session):
     return db.query(ShortVideo).all()
 
 
-def get_short_videos_by_status(db: Session, status: str, date: dt_date = None):
+def get_short_videos_by_status(db: Session, statuses: str, date: dt_date = None):
 
     if date:
         return (
@@ -111,3 +112,87 @@ def get_short_videos_by_status(db: Session, status: str, date: dt_date = None):
             )
             .all()
         )
+
+
+def get_short_video_by_status(db: Session, status: str):
+    return db.query(ShortVideo).filter(ShortVideo.status == status).first()
+
+
+def get_ready_to_process_content(
+    db: Session,
+    status: str,
+    excluded: bool = True,
+):
+    query = db.query(Content)
+    if excluded:
+        query = query.filter(Content.status != status)
+    else:
+        query = query.filter(Content.status == status)
+    return query.order_by(Content.id.asc()).first()
+
+
+def get_short_videos(
+    db: Session,
+    filter: str = None,
+    content_id: int = None,
+    ids: list[int] = None,
+    id: int = None,
+    youtube_url: str = None,
+    status: str = None,
+    page: int = 1,
+    limit: int = 10,
+    sort_by: str = "id",
+    sort_order: str = "desc",
+    start_date: str = None,
+    end_date: str = None,
+):
+    query = db.query(ShortVideo).join(Content, ShortVideo.content_id == Content.id)
+    if filter and filter != "":
+        search_query = "%" + filter.strip() + "%"
+        query = query.filter(
+            or_(
+                ShortVideo.title.like(search_query),
+                ShortVideo.description.like(search_query),
+                ShortVideo.tags.like(search_query),
+                Content.content.like(search_query),
+                ShortVideo.status.like(search_query),
+                ShortVideo.output_path.like(search_query),
+                ShortVideo.youtube_video_url.like(search_query),
+            )
+        )
+    if content_id and content_id != "":
+        query = query.filter(ShortVideo.content_id == content_id)
+    if ids and ids != "":
+        query = query.filter(ShortVideo.id.in_(ids))
+    if id and id != "":
+        query = query.filter(ShortVideo.id == id)
+    if youtube_url and youtube_url != "":
+        query = query.filter(ShortVideo.youtube_video_url == youtube_url)
+    if status and status != "":
+        query = query.filter(ShortVideo.status == status)
+    if sort_by and sort_by != "":
+        order_direction = desc if sort_order == "desc" else asc
+        query = query.order_by(order_direction(getattr(ShortVideo, sort_by)))
+    if start_date:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+    if end_date:
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    if start_date is not None:
+        if end_date is None:
+            end_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            end_date = end_date + timedelta(days=1) - timedelta(seconds=1)
+        query = query.filter(ShortVideo.created_at >= start_date).filter(
+            ShortVideo.created_at <= end_date
+        )
+    total = query.count()
+    if page:
+        offset = (page - 1) * limit
+        query = query.offset(offset).limit(limit)
+
+    return {
+        "videos": query.all(),
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }

@@ -13,7 +13,6 @@ class Content(Base):
     voice_id = Column(String(255), nullable=True, default="JBFqnCBsd6RMkjVDRZzb")
     status = Column(Enum(ContentStatus), nullable=True, default=ContentStatus.DRAFT)
     audio_path = Column(String(255), nullable=True)
-    video_path = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

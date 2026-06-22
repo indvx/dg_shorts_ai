@@ -15,11 +15,6 @@ class TopicSchema(BaseModel):
     created_at: t.Any
     updated_at: t.Any
 
-
-class GenerateScriptSchema(BaseModel):
-    topic_id: int
-
-
 class JobResponseSchema(BaseModel):
     id: str
     next_run_time: t.Any

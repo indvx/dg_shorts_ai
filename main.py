@@ -60,7 +60,7 @@ def startup_event():
         replace_existing=True,
     )
 
-    # Generate topic at 15 minutes past every hour from 6 AM to 8 PM
+    # Generate topic at 7:53 AM, 12:53 PM, 5:53 PM, 7:53 PM
     scheduler.add_job(
         automation_jobs.generate_topic_job,
         "cron",
@@ -71,7 +71,7 @@ def startup_event():
         replace_existing=True,
     )
 
-    # Create content at 10:30 AM, 3:30 PM, 6:30 PM, 8:30 PM
+    # Create content at 7:54 AM, 12:54 PM, 5:54 PM, 7:54 PM
     scheduler.add_job(
         automation_jobs.create_content_job,
         "cron",
@@ -82,7 +82,7 @@ def startup_event():
         replace_existing=True,
     )
 
-    # Create audio at 10:31 AM, 3:31 PM, 6:31 PM, 8:31 PM
+    # Create audio at 7:55 AM, 12:55 PM, 5:55 PM, 7:55 PM
     scheduler.add_job(
         automation_jobs.create_audio_job,
         "cron",
@@ -93,7 +93,7 @@ def startup_event():
         replace_existing=True,
     )
 
-    # Fetch and generate video at 10:32 AM, 3:32 PM, 6:32 PM, 8:32 PM
+    # Fetch and generate video at 7:56 AM, 12:56 PM, 5:56 PM, 7:56 PM
     scheduler.add_job(
         automation_jobs.fetch_and_generate_video_job,
         "cron",
@@ -104,7 +104,7 @@ def startup_event():
         replace_existing=True,
     )
 
-    # Merge video and audio at 10:33 AM, 3:33 PM, 6:33 PM, 8:33 PM
+    # Merge video and audio at 7:58 AM, 12:58 PM, 5:58 PM, 7:58 PM
     scheduler.add_job(
         automation_jobs.merge_video_and_audio_job,
         "cron",
@@ -115,7 +115,7 @@ def startup_event():
         replace_existing=True,
     )
 
-    # Update video metadata at 10:34 AM, 3:34 PM, 6:34 PM, 8:34 PM
+    # Update video metadata at 7:59 AM, 12:59 PM, 5:59 PM, 7:59 PM
     scheduler.add_job(
         automation_jobs.update_video_metadata_job,
         "cron",
@@ -126,7 +126,7 @@ def startup_event():
         replace_existing=True,
     )
 
-    # Upload video on youtube at 10:35 AM, 3:35 PM, 6:35 PM, 8:35 PM
+    # Upload video on youtube at 8:00 AM, 1:00 PM, 6:00 PM, 8:00 PM
     scheduler.add_job(
         automation_jobs.upload_video_on_youtube_job,
         "cron",

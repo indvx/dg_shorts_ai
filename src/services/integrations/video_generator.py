@@ -13,12 +13,7 @@ class VideoGeneratorService(BaseService):
         self.api_key = os.getenv("PEXELS_API_KEY")
         self.video_directory = os.getenv("VIDEO_DIRECTORY")
 
-    def fetch_and_download_background(self, content_id: int) -> str:
-        content = content_crud.get_content(self.db, content_id)
-        if not content:
-            raise ValueError("Content not found")
-        if not content.status == ContentStatus.AUDIO_GENERATED:
-            raise ValueError("Content audio not generated.")
+    def fetch_and_download_background(self, content) -> str:
 
         search_query = content.title
         headers = {"Authorization": self.api_key}
@@ -46,25 +41,9 @@ class VideoGeneratorService(BaseService):
 
             logger.info(f"Background video asset saved at: {download_path}")
 
-            content_crud.update_content(
-                self.db,
-                content,
-                {
-                    "video_path": download_path,
-                    "status": ContentStatus.VIDEO_GENERATED,
-                },
-            )
-
             return download_path
 
         except Exception as e:
-            content_crud.update_content(
-                self.db,
-                content,
-                {
-                    "status": ContentStatus.ERROR,
-                },
-            )
             logger.error(f"Failed to fetch video from Pexels API: {str(e)}")
             raise e
 

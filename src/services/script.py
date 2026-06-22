@@ -5,160 +5,240 @@ from src.sql.cruds import (
     short_video as short_video_crud,
     topic as topic_crud,
 )
-from src.enums.content import ContentStatus
-from src.enums.short_video import ShortVideoStatus
-from src.services.integrations.llm import LLMService
-from src.services.integrations.elevenlabs import ElevenLabsService
-from src.services.integrations.youtube import YouTubeService
-from datetime import datetime, UTC
+from src.enums import short_video as short_video_status, content as content_status
+from src.services.main.topic import TopicService
+from src.services.main.content import ContentService
+from src.services.main.short_video import ShortVideoService
+from fastapi import HTTPException
+import os
+from datetime import datetime, UTC, timedelta
 
 
 class ScriptService(BaseService):
     def __init__(self):
         super().__init__()
-        logger.info(f"Script Service initialized.")
-        self.llm_service = LLMService()
-        self.elevenlab_service = ElevenLabsService()
+        self.topic_service = TopicService()
+        self.content_service = ContentService()
+        self.short_video_service = ShortVideoService()
 
-    def generate_topic(self, topic: str | None = None):
+    def clean_uploaded_video(self):
+        logger.info(f"Starting to clean uploaded videos")
         try:
-            new_topic = self.llm_service.generate_topic(topic)
+            videos = self.short_video_service.get_short_videos_by_status(
+                self.db, short_video_status.ShortVideoStatus.PUBLISHED
+            )
+            for video in videos:
+                if os.path.exists(video.output_path):
+                    os.remove(video.output_path)
+                if os.path.exists(video.content.audio_path):
+                    os.remove(video.content.audio_path)
+                if os.path.exists(video.content.video_path):
+                    os.remove(video.content.video_path)
+                content_crud.delete_content(self.db, video.content)
+                short_video_crud.delete_short_video(self.db, video)
         except Exception as e:
-            logger.error(f"Failed to generate topic: {str(e)}")
-            raise Exception(f"Failed to generate topic: {str(e)}")
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 1: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 1: {str(e)}")
+            return
 
-        topic_slug = self.get_topic_slug(new_topic)
-        existing = topic_crud.get_topic_by_slug(self.db, topic_slug)
-        if existing:
-            return existing
-        new_topic = topic_crud.add_topic(self.db, new_topic, topic_slug)
-        return new_topic
-
-    def generate_script(self, topic_id: int):
+    def clean_last_7_days_log_file(self):
+        logger.info("Starting log cleanup")
+        log_dir = "logs"
         try:
-            topic = topic_crud.get_unused_topic(self.db, id=topic_id)
+            cutoff = datetime.now(UTC).date() - timedelta(days=7)
+            for log_file in os.listdir(log_dir):
+                if not log_file.endswith(".log"):
+                    continue
+                try:
+                    file_date = datetime.strptime(log_file[:-4], "%Y-%m-%d").date()
+                    if file_date < cutoff:
+                        full_path = os.path.join(log_dir, log_file)
+                        logger.info(f"Deleting {full_path}")
+                        os.remove(full_path)
+                        logger.info(f"Deleted {full_path}")
+                except ValueError:
+                    logger.warning(f"Invalid log filename: {log_file}")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 2: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 2: {str(e)}")
+            return
+
+    def generate_topic(self):
+        try:
+            logger.info(f"Starting to generate topic")
+            logger.info(f"Step 1/2: Generating topic")
+            topic = self.topic_service.create_topic(topic_name=None)
+            logger.info(f"Step 2/2: Generated topic: '{topic}'")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 3: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 3: {str(e)}")
+            return
+
+    def create_content(self):
+        logger.info(f"Starting to create content")
+        logger.info(f"Step 1/3: Getting topic")
+        topic = self.topic_service.get_random_unused_topic()
+        logger.info(f"Step 2/3: Got topic: {topic}")
+
+        try:
             if not topic:
-                raise ValueError("Topic not found, may be all topics are used.")
-
-            content = {"title": topic.name}
-            script = self.llm_service.generate_script(topic.name)
-            logger.info(f"Script processed: {len(script.split())} words.")
-            content["content"] = script
-            content["status"] = ContentStatus.DRAFT
-            new_content = content_crud.create_content(self.db, content)
-            topic_crud.update_topic(self.db, topic)
-            return new_content
+                logger.info(f"No topic found to process")
+                return
+            logger.info(f"Step 3/3: Creating content with topic")
+            self.content_service.create_content(topic.id)
+            logger.info(f"Step 3/3: Created content with topic: {topic.id}")
         except Exception as e:
-            logger.error(f"Failed to generate script: {str(e)}")
-            raise Exception(f"Failed to generate content: {str(e)}")
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 4: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 4: {str(e)}")
+            return
 
-    def generate_audio_from_content(self, content_id: int) -> dict:
-        content = content_crud.get_content(self.db, content_id)
-        if not content:
-            raise ValueError("Content not found")
-
-        if content.status in [
-            ContentStatus.AUDIO_GENERATED,
-            ContentStatus.VIDEO_GENERATED,
-            ContentStatus.MERGED,
-            ContentStatus.ERROR,
-        ]:
-            raise ValueError("Content already processed.")
-
-        try:
-            response = self.elevenlab_service.generate_speech_file(content)
-        except Exception as e:
-            logger.error(f"Failed to generate audio: {str(e)}")
-            raise Exception(f"Failed to generate audio: {str(e)}")
-
-        content_crud.update_content(
-            self.db,
-            content,
-            {
-                "status": ContentStatus.AUDIO_GENERATED,
-                "audio_path": response,
-            },
+    def create_audio(self):
+        logger.info(f"Starting to create audio")
+        logger.info(f"Step 1/4: Getting content")
+        excluded_statuses = [
+            content_status.ContentStatus.AUDIO_GENERATED,
+            content_status.ContentStatus.VIDEO_GENERATED,
+            content_status.ContentStatus.MERGED,
+            content_status.ContentStatus.ERROR,
+        ]
+        content = self.content_service.get_ready_to_process_content(
+            excluded_statuses, excluded=True
         )
-        return {
-            "content_id": content.id,
-            "audio_path": response,
-            "status": ContentStatus.AUDIO_GENERATED,
-        }
 
-    def update_video_content_metadata(self, video_id: int):
-        logger.info(f"Updating video path in database for content: {video_id}")
-        short_video = short_video_crud.get_short_video(self.db, video_id)
-        if not short_video:
-            raise ValueError("Short video not found for provided content id")
-
-        if short_video.status != ShortVideoStatus.NOT_STARTED:
-            raise ValueError("Short video already processed or failed!")
-
-        content_text = short_video.content.content
-
-        # generate metadata
         try:
-            metadata = self.llm_service.generate_metadata(content_text)
-            metadata_dict = (
-                metadata.model_dump()
-                if hasattr(metadata, "model_dump")
-                else metadata.dict()
-            )
+            if not content:
+                logger.info(f"No content found to process")
+                return
+            logger.info(f"Step 2/4: Got content: {content}")
+            logger.info(f"Step 3/4: Generating audio for content")
+            self.content_service.generate_audio_from_content(content.id)
+            logger.info(f"Step 4/4: Generated audio for content")
         except Exception as e:
-            logger.error(f"Failed to generate metadata: {str(e)}")
-            raise Exception(f"Failed to generate metadata: {str(e)}")
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 5: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 5: {str(e)}")
+            return
 
-        updated_short_video = short_video_crud.update_short_video(
-            self.db, short_video, metadata_dict
+    def generate_bg_video(self):
+        logger.info(f"Starting to fetch and generate video")
+        target_statuses = [content_status.ContentStatus.AUDIO_GENERATED]
+        logger.info(f"Step 1/2: Getting content")
+        content = self.content_service.get_ready_to_process_content(
+            target_statuses, excluded=False
         )
-        return {
-            "content_id": short_video.content.id,
-            "video_id": updated_short_video.id,
-            "title": updated_short_video.title,
-            "video_path": updated_short_video.output_path,
-            "description": updated_short_video.description,
-            "tags": updated_short_video.tags,
-            "status": updated_short_video.status,
-        }
-
-    def upload_video_to_youtube(self, video_id: int):
-        short_video = short_video_crud.get_short_video(self.db, video_id)
-        if not short_video:
-            raise ValueError("Short video not found for provided content id")
-
-        if short_video.status in [
-            ShortVideoStatus.COMPLETED,
-            ShortVideoStatus.PUBLISHED,
-        ]:
-            raise ValueError("Short video already published.")
-
-        video_path = short_video.output_path
-        title = short_video.title
-        description = short_video.description
-        tags_list = [t.strip() for t in short_video.tags.split(",") if t.strip()]
 
         try:
-            response = YouTubeService().upload_shorts_video(
-                video_path, title, description, tags_list
+            if not content:
+                logger.error(f"No content found to process")
+                return
+            logger.info(f"Step 2/4: Got content: {content}")
+            logger.info(f"Step 3/4: Generating and downloading video for content")
+            self.short_video_service.generate_and_download_background_video(
+                content_id=content.id
             )
-            # Update database status on successful upload
-            short_video_crud.update_short_video(
-                self.db,
-                short_video,
-                {
-                    "youtube_video_path": f"https://youtu.be/{response}",
-                    "status": ShortVideoStatus.PUBLISHED,
-                    "published_at": datetime.now(UTC),
-                },
-            )
-            content_crud.update_content(
-                self.db,
-                short_video.content,
-                {
-                    "status": ContentStatus.VIDEO_PUBLISHED,
-                },
-            )
-            return response
+            logger.info(f"Step 4/4: Generated and downloaded video for content")
         except Exception as e:
-            logger.error(f"Failed to upload video: {str(e)}")
-            raise Exception(f"Failed to upload video: {str(e)}")
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 6: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 6: {str(e)}")
+            return
+
+    def merge_video_and_audio(self):
+        logger.info(f"Starting to merge video and audio")
+        video = self.short_video_service.get_short_video_by_status(
+            short_video_status.ShortVideoStatus.NOT_STARTED,
+        )
+        try:
+            if not video:
+                logger.error(f"No video found to process")
+                return
+            logger.info(f"Step 2/4: Got video: {video}")
+            logger.info(f"Step 3/4: Merging video and audio for video")
+            self.short_video_service.construct_original_video(video.id)
+            logger.info(f"Step 4/4: Merged video and audio for video")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 7: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 7: {str(e)}")
+            return
+
+    def update_video_metadata(self):
+        logger.info(f"Starting to update video metadata")
+        short_video = self.short_video_service.get_short_video_by_status(
+            short_video_status.ShortVideoStatus.PROCESSING,
+        )
+        try:
+            if not short_video:
+                logger.error(f"No short video found to process")
+                return
+            logger.info(f"Step 2/2: Updating video metadata for content")
+            self.short_video_service.update_video_metadata(short_video.id)
+            logger.info(f"Step 4/4: Updated video metadata for content")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 7: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 7: {str(e)}")
+            return
+
+    def upload_video_on_youtube(self):
+        logger.info(f"Starting to upload video to youtube")
+        short_video = self.short_video_service.get_short_video_by_status(
+            short_video_status.ShortVideoStatus.METADATA_GENERATED,
+        )
+        try:
+            if not short_video:
+                logger.info(f"No short video found to process")
+                return
+            self.short_video_service.upload_video_on_youtube(short_video.id)
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 7: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 7: {str(e)}")
+            return
+
+    def clean_last_7_days_contents(self):
+        logger.info(f"Step 1/4: Getting contents")
+        contents = content_crud.get_all_contents(self.db, days=7)
+        logger.info(f"Step 2/4: Got contents {len(contents)}")
+
+        try:
+            if len(contents) == 0:
+                logger.error(f"No contents found to process")
+                return
+
+            logger.info(f"Step 3/4: Cleaning last 7 days contents")
+            for content in contents:
+                logger.info(f"Checking content {content.id}")
+                if (
+                    len(content.short_video) == 0
+                    or content.status == content_status.ContentStatus.ERROR
+                ):
+                    logger.info(f"Cleaning content {content.id}")
+                    if content.audio_path is not None:
+                        os.remove(content.audio_path)
+                        logger.info(f"Cleaned content {content.id} audio path")
+                    if content.video_path is not None:
+                        os.remove(content.video_path)
+                        logger.info(f"Cleaned content {content.id} video path")
+                    content_crud.delete_content(self.db, content)
+                    logger.info(f"Cleaned content {content.id}")
+            logger.info(f"Step 4/4: Cleaned last 7 days contents")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                logger.error(f"Error 8: {e.status_code} - {e.detail}")
+            else:
+                logger.error(f"Error 8: {str(e)}")
+            return
