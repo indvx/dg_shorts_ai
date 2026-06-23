@@ -54,29 +54,26 @@ class YouTubeService(BaseService):
         
         logger.info(f"Streaming binary chunks into YouTube Ingestion Pipeline: '{final_title}'")
         logger.info(f"Tags: {tags_list}")
-        
-        body = {
-            "snippet": {
-                "title": final_title,
-                "description": description,
-                "tags": tags_list,
-                "categoryId": "22"  # Category 22 is for People & Blogs / Entertainment
-            },
-            "status": {
-                "privacyStatus": "public",  # Direct live publish. Use 'private' or 'unlisted' for testing.
-                "selfDeclaredMadeForKids": False
-            }
-        }
 
         try:
+            body = {
+                "snippet": {
+                    "title": final_title,
+                    "description": description,
+                    "tags": tags_list,
+                    "categoryId": "22"  # Category 22 is for People & Blogs / Entertainment
+                },
+                "status": {
+                    "privacyStatus": "public",  # Direct live publish. Use 'private' or 'unlisted' for testing.
+                    "selfDeclaredMadeForKids": False
+                }
+            }
             media = MediaFileUpload(video_file_path, chunksize=1024*1024, resumable=True, mimetype="video/mp4")
-            
             request = self.youtube_client.videos().insert(
                 part="snippet,status",
                 body=body,
                 media_body=media
             )
-            
             response = None
             while response is None:
                 status, response = request.next_chunk()

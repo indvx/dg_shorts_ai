@@ -21,12 +21,13 @@ app.include_router(topic.router, prefix="/api")
 
 
 scheduler = BackgroundScheduler(jobstores=jobstores)
-scheduler.start()
 
 
 @app.on_event("startup")
 def startup_event():
     logger.info("Application started")
+    scheduler.start()
+
 
     # Clean last 7 days log file every day at 12 AM
     scheduler.add_job(
@@ -65,8 +66,8 @@ def startup_event():
         automation_jobs.generate_topic_job,
         "cron",
         id="generate_topic",
-        hour="7,12,17,19",
-        minute=53,
+        hour="7,12,17,19,14",
+        minute=3,
         max_instances=1,
         replace_existing=True,
     )
@@ -76,8 +77,8 @@ def startup_event():
         automation_jobs.create_content_job,
         "cron",
         id="create_content",
-        hour="7,12,17,19",
-        minute=54,
+        hour="7,12,17,19,14",
+        minute=4,
         max_instances=1,
         replace_existing=True,
     )
@@ -87,8 +88,8 @@ def startup_event():
         automation_jobs.create_audio_job,
         "cron",
         id="create_audio",
-        hour="7,12,17,19",
-        minute=55,
+        hour="7,12,17,19,14",
+        minute=5,
         max_instances=1,
         replace_existing=True,
     )
@@ -98,8 +99,8 @@ def startup_event():
         automation_jobs.fetch_and_generate_video_job,
         "cron",
         id="fetch_and_generate_video",
-        hour="7,12,17,19",
-        minute=56,
+        hour="7,12,17,19,14",
+        minute=6,
         max_instances=1,
         replace_existing=True,
     )
@@ -109,8 +110,8 @@ def startup_event():
         automation_jobs.merge_video_and_audio_job,
         "cron",
         id="merge_video_and_audio",
-        hour="7,12,17,19",
-        minute=58,
+        hour="7,12,17,19,14",
+        minute=8,
         max_instances=1,
         replace_existing=True,
     )
@@ -120,8 +121,8 @@ def startup_event():
         automation_jobs.update_video_metadata_job,
         "cron",
         id="update_video_metadata",
-        hour="7,12,17,19",
-        minute=59,
+        hour="7,12,17,19,14",
+        minute=9,
         max_instances=1,
         replace_existing=True,
     )
@@ -131,7 +132,8 @@ def startup_event():
         automation_jobs.upload_video_on_youtube_job,
         "cron",
         id="upload_video_on_youtube",
-        hour="8,13,18,20",
+        hour="8,13,18,20,14",
+        minute=10,
         max_instances=1,
         replace_existing=True,
     )

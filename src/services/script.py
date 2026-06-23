@@ -72,7 +72,7 @@ class ScriptService(BaseService):
             logger.info(f"Starting to generate topic")
             logger.info(f"Step 1/2: Generating topic")
             topic = self.topic_service.create_topic(topic_name=None)
-            logger.info(f"Step 2/2: Generated topic: '{topic}'")
+            logger.info(f"Step 2/2: Generated topic: '{topic.name}'")
         except Exception as e:
             if isinstance(e, HTTPException):
                 logger.error(f"Error 3: {e.status_code} - {e.detail}")
