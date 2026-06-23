@@ -15,24 +15,38 @@ You can trigger this manually using the API or let it run automatically in the b
 
 ## ⚙️ Architecture & Core Workflow
 
-The system is designed with a decoupled architecture. The background orchestrator stages the creation of each video step-by-step to handle rate limits, API failures, and resource usage efficiently.
+The system is designed with a decoupled architecture, where responsibilities are split across domain-specific services (`TopicService`, `ContentService`, `ShortVideoService`) managed by a central `ScriptService` orchestrator. The background orchestrator stages the creation of each video step-by-step to handle rate limits, API failures, and resource usage efficiently.
 
 ### System Components Flow
 
 ```mermaid
 graph TD
     A[Client API Request / APScheduler Trigger] -->|Start Job| B(FastAPI Router / Route Gateway)
-    B --> C[Script Service / Coordinator]
-    C -->|1. Generate Topic & Track in DB| D1[LLM Service / Topic Engine]
-    C -->|2. Generate Script from Topic| D2[LLM Service / Writer Engine]
-    C -->|3. Synthesize Narrator Voice| E[ElevenLabs Voice Engine]
-    C -->|4. Fetch Background Loops| F[Pexels Video Generator Service]
-    C -->|5. Dynamic Render, Mix Music & Compile| G[Video Merge Service]
-    G -->|Mute, Loop video & Blend background music| H[Output Media Compiler]
-    H -->|6. SEO Metadata Enrichment| I[LLM Service JSON Output]
-    I -->|7. Broadcast Publish & Upload| J[YouTube API v3 Service]
+    B --> C[Script Service / Orchestrator]
+    
+    C -->|Delegate Topic Tasks| TS[Topic Service]
+    TS -->|1. Generate & Track Topic| D1[LLM Service]
+    
+    C -->|Delegate Content Tasks| CS[Content Service]
+    CS -->|2. Generate Script| D2[LLM Service]
+    CS -->|3. Synthesize Voice| E[ElevenLabs Voice Engine]
+    
+    C -->|Delegate Video Tasks| SVS[Short Video Service]
+    SVS -->|4. Fetch Background Loops| F[Pexels Video Generator]
+    SVS -->|5. Render & Mix Audio| G[Video Merge Service]
+    SVS -->|6. SEO Metadata| I[LLM Service]
+    SVS -->|7. Broadcast & Upload| J[YouTube API v3 Service]
+    
     J -->|Complete| K[Live YouTube Short Post]
 ```
+
+### Micro-Service Domains
+
+To maintain clean code boundaries, logic is separated into specific domain services:
+* **`ScriptService`**: Acts as the central orchestrator and scheduler wrapper. It controls the step-by-step workflow timing and delegates tasks to domain services.
+* **`TopicService`**: Dedicated strictly to generating, validating, and managing the lifecycle of viral topics in the database.
+* **`ContentService`**: Handles generating retention-optimized Hindi scripts from topics, and triggers the text-to-speech audio synthesis.
+* **`ShortVideoService`**: Manages the video pipeline, including fetching background footage, triggering the render compilation, generating SEO metadata, and publishing to YouTube.
 
 ---
 
@@ -131,6 +145,7 @@ dg_shorts_ai/
     │   └── v1/           # Version 1 API Routes
     │       ├── content.py # Script & audio generation endpoints
     │       ├── logs.py    # Developer real-time log access endpoints
+    │       ├── topic.py   # Topic endpoints
     │       └── video.py   # Video generation, merge, metadata, and publishing endpoints
     │
     ├── db/               # Database engine session and dependencies
@@ -143,25 +158,33 @@ dg_shorts_ai/
     │   ├── content.py    # ContentStatus enum (draft, audio_generated, etc.)
     │   └── short_video.py # ShortVideoStatus enum (not_started, published, etc.)
     │
+    ├── integrations/     # Third-party API wrappers
+    │   ├── elevenlabs.py       # ElevenLabs Voice synthesis integration
+    │   ├── llm.py              # LLM wrapper (Gemini and OpenAI support)
+    │   ├── video_generator.py  # Pexels video fetcher and downloader
+    │   ├── video_merge.py      # Video compiler wrapper
+    │   └── youtube.py          # YouTube OAuth authentication & upload wrapper
+    │
+    ├── jobs/             # Scheduled APScheduler jobs
+    │   └── automation_jobs.py
+    │
     ├── schemas/          # Strict Pydantic model payload validations
     │   ├── __init__.py
-    │   └── schema.py     # GenerateScriptSchema definition
+    │   ├── content.py    # Content schemas
+    │   ├── schema.py     # GenerateScriptSchema definition
+    │   └── short_video.py # Video schemas
     │
-    ├── sql/              # Database Operations Layer
-    │   ├── cruds/        # CRUD operations helpers (content, short_video)
-    │   └── models/       # SQLAlchemy models mapping schema (contents, short_videos)
+    ├── services/         # Orchestration & automation services
+    │   ├── __init__.py
+    │   ├── base.py       # Base service abstraction layer
+    │   ├── content.py    # Content processing service
+    │   ├── script.py     # Main ScriptService coordinating script-to-publish steps
+    │   ├── short_video.py # Video logic service
+    │   └── topic.py      # Topic logic service
     │
-    └── services/         # Orchestration & automation services
-        ├── __init__.py
-        ├── base.py       # Base service abstraction layer
-        ├── script.py     # Main ScriptService coordinating script-to-publish steps
-        ├── automation.py # AutomationService running database cleanup and background pipeline automation
-        ├── video_merge.py # MoviePy compiler (combines audio, mutes/loops video)
-        └── integrations/ # Third-party API wrappers
-            ├── elevenlabs.py       # ElevenLabs Voice synthesis integration
-            ├── llm.py              # LLM wrapper (Gemini and OpenAI support)
-            ├── video_generator.py  # Pexels video fetcher and downloader
-            └── youtube.py          # YouTube OAuth authentication & upload wrapper
+    └── sql/              # Database Operations Layer
+        ├── cruds/        # CRUD operations helpers (content, short_video)
+        └── models/       # SQLAlchemy models mapping schema (contents, short_videos)
 ```
 
 ---
@@ -334,13 +357,18 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser to
 
 | Method | Endpoint | Description | Payload / Params |
 | :--- | :--- | :--- | :--- |
+| **GET** | `/api/v1/health` | Health check endpoint | - |
 | **POST** | `/api/v1/topic/` | Generates a viral topic via LLM Service and stores/tracks it in the database. | `{"name": "category/seed"}` |
-| **POST** | `/api/v1/content/generate-script` | Generates a Hindi script about a stored topic ID and creates a draft Content record. | `{"topic_id": int}` |
-| **POST** | `/api/v1/content/text/{content_id}/generate-audio` | Converts script text to speech audio via ElevenLabs. | `content_id` (path parameter) |
-| **POST** | `/api/v1/video/content/{content_id}/generate-video` | Fetches vertical matching background video from Pexels. | `content_id` (path parameter) |
-| **POST** | `/api/v1/video/content/{content_id}/merge-video` | Merges narration audio, downloads vertical background video, mixes background music, and creates a ShortVideo. | `content_id` (path parameter) |
+| **GET** | `/api/v1/topic/{id}` | Gets a topic by ID. | `id` (path parameter) |
+| **GET** | `/api/v1/topic/random` | Gets a random unused topic. | - |
+| **POST** | `/api/v1/content/generate` | Generates a Hindi script about a stored topic ID and creates a draft Content record. | `{"topic_id": int}` |
+| **GET** | `/api/v1/content/{id}` | Gets a content record by ID. | `id` (path parameter) |
+| **POST** | `/api/v1/content/{id}/generate-audio` | Converts script text to speech audio via ElevenLabs. | `id` (path parameter) |
+| **POST** | `/api/v1/video/content/{content_id}/background` | Fetches vertical matching background video from Pexels. | `content_id` (path parameter) |
+| **POST** | `/api/v1/video/video/{video_id}/merge` | Merges narration audio, downloads vertical background video, mixes background music, and creates a ShortVideo. | `video_id` (path parameter) |
 | **POST** | `/api/v1/video/video/{video_id}/metadata` | Generates Title, Description, and Tags via LLM. | `video_id` (path parameter) |
 | **POST** | `/api/v1/video/video/{video_id}/publish` | Direct-uploads the compiled video onto YouTube via API. | `video_id` (path parameter) |
+| **GET** | `/api/v1/video/list` | Gets a list of all short video records. | query params (status, etc.) |
 | **GET** | `/api/v1/logs/current` | Fetches the last 500 lines of today's live execution log. | - |
 | **GET** | `/api/v1/logs/filter` | Fetches historical log file archives. | `?date=YYYY-MM-DD` (query parameter) |
 | **GET** | `/api/v1/jobs` | Gets status and timing details of scheduled background jobs. | - |
@@ -397,7 +425,7 @@ sequenceDiagram
     end
 
     rect rgb(255, 255, 240)
-    note right of S: Run at H:58: merge_video_and_audio
+    note right of S: Run at H:57: merge_video_and_audio
     S->>DB: Fetch VIDEO_GENERATED Content
     S->>MV: Loop video, overlay audio, and blend random background music
     MV-->>S: Final output .mp4 path
@@ -446,7 +474,7 @@ sequenceDiagram
 * **Script Content Generation (`create_content`):** Runs at **7:54 AM, 12:54 PM, 5:54 PM, and 7:54 PM** daily. Automatically selects an unused topic from the database, prompts the LLM to generate a suspenseful Hindi narration script, and inserts a `DRAFT` status content record.
 * **Speech Synthesis (`create_audio`):** Runs at **7:55 AM, 12:55 PM, 5:55 PM, and 7:55 PM** daily. Pulls pending `DRAFT` content records and invokes ElevenLabs text-to-speech to save the voice narration audio locally under `data/audio/` (transitions state to `AUDIO_GENERATED`).
 * **Background Video Sourcing (`fetch_and_generate_video`):** Runs at **7:56 AM, 12:56 PM, 5:56 PM, and 7:56 PM** daily. Identifies content with generated audio, searches Pexels for matching portrait stock videos, downloads the file to `data/video/`, and shifts state to `VIDEO_GENERATED`.
-* **Video Compilation, Loop & Audio Blend (`merge_video_and_audio`):** Runs at **7:58 AM, 12:58 PM, 5:58 PM, and 7:58 PM** daily. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track composite-mixed with a random background music file from `MUSIC_DIRECTORY` (volume set to `0.12` with fade-in/fade-out), write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `MERGED`).
+* **Video Compilation, Loop & Audio Blend (`merge_video_and_audio`):** Runs at **7:57 AM, 12:57 PM, 5:57 PM, and 7:57 PM** daily. Uses `MoviePy` to loop/clip the stock video to match the audio narration duration, overlay the voice track composite-mixed with a random background music file from `MUSIC_DIRECTORY` (volume set to `0.12` with fade-in/fade-out), write the completed MP4 to `data/output/`, and instantiate a new `ShortVideo` database entry in status `NOT_STARTED` (shifting Content status to `MERGED`).
 * **Metadata Enrichment (`update_video_metadata`):** Runs at **7:59 AM, 12:59 PM, 5:59 PM, and 7:59 PM** daily. Fetches `NOT_STARTED` short videos and prompts the LLM to generate click-worthy Titles, Descriptions, and Hashtag lists.
 * **YouTube Upload & Publish (`upload_video_on_youtube`):** Runs at **8:00 AM, 1:00 PM, 6:00 PM, and 8:00 PM** daily. Directly uploads the fully metadata-configured vertical shorts video onto YouTube.
 * **Content Record Retention (`clean_last_7_days_contents`):** Runs once daily at **12:10 AM**. Identifies database Content records older than 7 days that either failed (status `ERROR`) or were never published to YouTube, deletes their local speech and stock video files, and purges the Content records from the database.
