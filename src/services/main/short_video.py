@@ -138,7 +138,7 @@ class ShortVideoService(BaseService):
                 self.db,
                 short_video,
                 {
-                    "youtube_video_path": f"https://youtu.be/{response}",
+                    "youtube_video_url": f"https://youtu.be/{response}",
                     "status": ShortVideoStatus.PUBLISHED,
                     "published_at": datetime.now(UTC),
                 },

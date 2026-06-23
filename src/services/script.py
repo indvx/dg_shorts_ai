@@ -24,18 +24,32 @@ class ScriptService(BaseService):
     def clean_uploaded_video(self):
         logger.info(f"Starting to clean uploaded videos")
         try:
+            logger.info(f"Step 1/4: Getting videos")
             videos = self.short_video_service.get_short_videos_by_status(
                 self.db, short_video_status.ShortVideoStatus.PUBLISHED
             )
+            logger.info(f"Step 2/4: Got videos: {len(videos)} videos")
+            logger.info(f"Step 3/4: Cleaning videos")
             for video in videos:
+                logger.info(f"Cleaning video: {video.id}")
                 if os.path.exists(video.output_path):
+                    logger.info(f"Deleting video: {video.output_path}")
                     os.remove(video.output_path)
+                    logger.info(f"Deleted video: {video.output_path}")
                 if os.path.exists(video.content.audio_path):
+                    logger.info(f"Deleting video: {video.content.audio_path}")
                     os.remove(video.content.audio_path)
-                if os.path.exists(video.content.video_path):
-                    os.remove(video.content.video_path)
+                    logger.info(f"Deleted video: {video.content.audio_path}")
+                if os.path.exists(video.background_video_url):
+                    logger.info(f"Deleting video: {video.background_video_url}")
+                    os.remove(video.background_video_url)
+                    logger.info(f"Deleted video: {video.background_video_url}")
+                logger.info(f"Deleting video from db: {video.id}")
                 content_crud.delete_content(self.db, video.content)
+                logger.info(f"Deleted video from db: {video.id}")
                 short_video_crud.delete_short_video(self.db, video)
+                logger.info(f"Deleted video from db: {video.id}")
+            logger.info(f"Step 4/4: Deleted videos")
         except Exception as e:
             if isinstance(e, HTTPException):
                 logger.error(f"Error 1: {e.status_code} - {e.detail}")
@@ -47,9 +61,13 @@ class ScriptService(BaseService):
         logger.info("Starting log cleanup")
         log_dir = "logs"
         try:
+            logger.info(f"Step 1/4: Getting log files")
+            logger.info(f"Step 2/4: Got log files: {len(os.listdir(log_dir))} log files")
+            logger.info(f"Step 3/4: Cleaning log files")
             cutoff = datetime.now(UTC).date() - timedelta(days=7)
             for log_file in os.listdir(log_dir):
                 if not log_file.endswith(".log"):
+                    logger.info(f"Skipping non-log file: {log_file}")
                     continue
                 try:
                     file_date = datetime.strptime(log_file[:-4], "%Y-%m-%d").date()
@@ -60,6 +78,7 @@ class ScriptService(BaseService):
                         logger.info(f"Deleted {full_path}")
                 except ValueError:
                     logger.warning(f"Invalid log filename: {log_file}")
+            logger.info(f"Step 4/4: Deleted log files")
         except Exception as e:
             if isinstance(e, HTTPException):
                 logger.error(f"Error 2: {e.status_code} - {e.detail}")
@@ -117,7 +136,7 @@ class ScriptService(BaseService):
             if not content:
                 logger.info(f"No content found to process")
                 return
-            logger.info(f"Step 2/4: Got content: {content}")
+            logger.info(f"Step 2/4: Got content: {content.id}")
             logger.info(f"Step 3/4: Generating audio for content")
             self.content_service.generate_audio_from_content(content.id)
             logger.info(f"Step 4/4: Generated audio for content")
@@ -140,7 +159,7 @@ class ScriptService(BaseService):
             if not content:
                 logger.error(f"No content found to process")
                 return
-            logger.info(f"Step 2/4: Got content: {content}")
+            logger.info(f"Step 2/4: Got content: {content.id}")
             logger.info(f"Step 3/4: Generating and downloading video for content")
             self.short_video_service.generate_and_download_background_video(
                 content_id=content.id
@@ -162,7 +181,7 @@ class ScriptService(BaseService):
             if not video:
                 logger.error(f"No video found to process")
                 return
-            logger.info(f"Step 2/4: Got video: {video}")
+            logger.info(f"Step 2/4: Got video: {video.id}")
             logger.info(f"Step 3/4: Merging video and audio for video")
             self.short_video_service.construct_original_video(video.id)
             logger.info(f"Step 4/4: Merged video and audio for video")
@@ -182,14 +201,15 @@ class ScriptService(BaseService):
             if not short_video:
                 logger.error(f"No short video found to process")
                 return
-            logger.info(f"Step 2/2: Updating video metadata for content")
+            logger.info(f"Step 2/4: Got video {short_video.id}")
+            logger.info(f"Step 3/4: Updating video metadata for content")
             self.short_video_service.update_video_metadata(short_video.id)
             logger.info(f"Step 4/4: Updated video metadata for content")
         except Exception as e:
             if isinstance(e, HTTPException):
-                logger.error(f"Error 7: {e.status_code} - {e.detail}")
+                logger.error(f"Error 8: {e.status_code} - {e.detail}")
             else:
-                logger.error(f"Error 7: {str(e)}")
+                logger.error(f"Error 8: {str(e)}")
             return
 
     def upload_video_on_youtube(self):
@@ -199,14 +219,17 @@ class ScriptService(BaseService):
         )
         try:
             if not short_video:
-                logger.info(f"No short video found to process")
+                logger.error(f"No short video found to process")
                 return
+            logger.info(f"Step 2/4: Got video {short_video.id}")
+            logger.info(f"Step 3/4: Uploading video to youtube")
             self.short_video_service.upload_video_on_youtube(short_video.id)
+            logger.info(f"Step 4/4: Uploaded video to youtube")
         except Exception as e:
             if isinstance(e, HTTPException):
-                logger.error(f"Error 7: {e.status_code} - {e.detail}")
+                logger.error(f"Error 9: {e.status_code} - {e.detail}")
             else:
-                logger.error(f"Error 7: {str(e)}")
+                logger.error(f"Error 9: {str(e)}")
             return
 
     def clean_last_7_days_contents(self):
@@ -216,7 +239,7 @@ class ScriptService(BaseService):
 
         try:
             if len(contents) == 0:
-                logger.error(f"No contents found to process")
+                logger.error(f"No contents found to clean")
                 return
 
             logger.info(f"Step 3/4: Cleaning last 7 days contents")
@@ -230,9 +253,6 @@ class ScriptService(BaseService):
                     if content.audio_path is not None:
                         os.remove(content.audio_path)
                         logger.info(f"Cleaned content {content.id} audio path")
-                    if content.video_path is not None:
-                        os.remove(content.video_path)
-                        logger.info(f"Cleaned content {content.id} video path")
                     content_crud.delete_content(self.db, content)
                     logger.info(f"Cleaned content {content.id}")
             logger.info(f"Step 4/4: Cleaned last 7 days contents")

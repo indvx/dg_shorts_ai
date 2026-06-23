@@ -66,8 +66,8 @@ def startup_event():
         automation_jobs.generate_topic_job,
         "cron",
         id="generate_topic",
-        hour="7,12,17,19,14",
-        minute=3,
+        hour="7,12,17,19",
+        minute=53,
         max_instances=1,
         replace_existing=True,
     )
@@ -77,8 +77,8 @@ def startup_event():
         automation_jobs.create_content_job,
         "cron",
         id="create_content",
-        hour="7,12,17,19,14",
-        minute=4,
+        hour="7,12,17,19",
+        minute=54,
         max_instances=1,
         replace_existing=True,
     )
@@ -88,8 +88,8 @@ def startup_event():
         automation_jobs.create_audio_job,
         "cron",
         id="create_audio",
-        hour="7,12,17,19,14",
-        minute=5,
+        hour="7,12,17,19",
+        minute=55,
         max_instances=1,
         replace_existing=True,
     )
@@ -99,19 +99,20 @@ def startup_event():
         automation_jobs.fetch_and_generate_video_job,
         "cron",
         id="fetch_and_generate_video",
-        hour="7,12,17,19,14",
-        minute=6,
+        hour="7,12,17,19",
+        minute=56,
         max_instances=1,
         replace_existing=True,
     )
 
-    # Merge video and audio at 7:58 AM, 12:58 PM, 5:58 PM, 7:58 PM
+    # Merge video and audio at 7:57 AM, 12:57 PM, 5:57 PM, 7:57 PM
     scheduler.add_job(
         automation_jobs.merge_video_and_audio_job,
         "cron",
         id="merge_video_and_audio",
-        hour="7,12,17,19,14",
-        minute=8,
+        hour="7,12,17,19",
+        minute=57,
+        # second=30,
         max_instances=1,
         replace_existing=True,
     )
@@ -121,8 +122,8 @@ def startup_event():
         automation_jobs.update_video_metadata_job,
         "cron",
         id="update_video_metadata",
-        hour="7,12,17,19,14",
-        minute=9,
+        hour="7,12,17,19",
+        minute=59,
         max_instances=1,
         replace_existing=True,
     )
@@ -132,8 +133,8 @@ def startup_event():
         automation_jobs.upload_video_on_youtube_job,
         "cron",
         id="upload_video_on_youtube",
-        hour="8,13,18,20,14",
-        minute=10,
+        hour="8,13,18,20",
+        minute=0,
         max_instances=1,
         replace_existing=True,
     )
