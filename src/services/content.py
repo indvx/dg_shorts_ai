@@ -1,6 +1,6 @@
 from src.services.base import BaseService
-from src.services.integrations.llm import LLMService
-from src.services.integrations.elevenlabs import ElevenLabsService
+from src.integrations.llm import LLMService
+from src.integrations.elevenlabs import ElevenLabsService
 from src.sql.cruds import content as content_crud, topic as topic_crud
 from src.sql.models.content import Content
 from src.enums.content import ContentStatus

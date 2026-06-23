@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from src.schemas.content import GenerateScriptSchema, ContentUpdateSchema
-from src.services.main.content import ContentService
+from src.services.content import ContentService
 from utils.logger import logger
 import typing as t
 

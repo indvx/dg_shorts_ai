@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.exceptions import HTTPException
 from src.schemas.schema import TopicCreateSchema, TopicSchema
-from src.services.main.topic import TopicService
+from src.services.topic import TopicService
 from utils.logger import logger
 
 router = APIRouter(

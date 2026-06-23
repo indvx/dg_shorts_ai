@@ -2,10 +2,10 @@ from src.services.base import BaseService
 from src.sql.cruds import short_video as short_video_crud, content as content_crud
 from src.enums.content import ContentStatus
 from src.enums.short_video import ShortVideoStatus
-from src.services.integrations.video_generator import VideoGeneratorService
-from src.services.integrations.video_merge import VideoMergeService
-from src.services.integrations.llm import LLMService
-from src.services.integrations.youtube import YouTubeService
+from src.integrations.video_generator import VideoGeneratorService
+from src.integrations.video_merge import VideoMergeService
+from src.integrations.llm import LLMService
+from src.integrations.youtube import YouTubeService
 from fastapi import HTTPException
 from utils.logger import logger
 from datetime import datetime, UTC

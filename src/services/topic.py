@@ -1,6 +1,6 @@
 from src.services.base import BaseService
 from src.sql.cruds import topic as topic_crud
-from src.services.integrations.llm import LLMService
+from src.integrations.llm import LLMService
 from utils.logger import logger
 from datetime import datetime
 from fastapi import HTTPException

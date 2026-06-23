@@ -6,9 +6,9 @@ from src.sql.cruds import (
     topic as topic_crud,
 )
 from src.enums import short_video as short_video_status, content as content_status
-from src.services.main.topic import TopicService
-from src.services.main.content import ContentService
-from src.services.main.short_video import ShortVideoService
+from src.services.topic import TopicService
+from src.services.content import ContentService
+from src.services.short_video import ShortVideoService
 from fastapi import HTTPException
 import os
 from datetime import datetime, UTC, timedelta

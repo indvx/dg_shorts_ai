@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from src.services.main.short_video import ShortVideoService
+from src.services.short_video import ShortVideoService
 from src.schemas.short_video import ShortVideoSchema
 import typing as t
 from src.enums.short_video import ShortVideoStatus
