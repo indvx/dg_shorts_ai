@@ -143,14 +143,15 @@ class ShortVideoService(BaseService):
                     "published_at": datetime.now(UTC),
                 },
             )
-            content_crud.update_content(
+            video = content_crud.update_content(
                 self.db,
                 short_video.content,
                 {
                     "status": ContentStatus.VIDEO_PUBLISHED,
                 },
             )
-            return response
+
+            return video
         except Exception as e:
             logger.error(f"Failed to upload video: {str(e)}")
             raise Exception(f"Failed to upload video: {str(e)}")

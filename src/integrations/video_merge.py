@@ -43,7 +43,7 @@ class VideoMergeService(BaseService):
             music_clip = music_clip.with_effects(
                 [
                     AudioLoop(duration=audio_duration),
-                    MultiplyVolume(0.12),
+                    MultiplyVolume(0.3),
                     AudioFadeIn(1),
                     AudioFadeOut(2),
                 ]
