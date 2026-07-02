@@ -51,15 +51,15 @@ def startup_event():
     )
 
     # Clean uploaded videos every day at 12:30 AM and 12:30 PM
-    scheduler.add_job(
-        automation_jobs.clean_uploaded_video_job,
-        "cron",
-        id="clean_uploaded_video",
-        hour="0,12",
-        minute=30,
-        max_instances=1,
-        replace_existing=True,
-    )
+    # scheduler.add_job(
+    #     automation_jobs.clean_uploaded_video_job,
+    #     "cron",
+    #     id="clean_uploaded_video",
+    #     hour="0,12",
+    #     minute=30,
+    #     max_instances=1,
+    #     replace_existing=True,
+    # )
 
     # Generate topic at 7:53 AM, 12:53 PM, 5:53 PM, 7:53 PM
     scheduler.add_job(

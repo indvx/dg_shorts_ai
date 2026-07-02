@@ -12,8 +12,8 @@ def clean_last_7_days_contents_job():
 
 
 # Clean uploaded videos
-def clean_uploaded_video_job():
-    ScriptService().clean_uploaded_video()
+# def clean_uploaded_video_job():
+#     ScriptService().clean_uploaded_video()
 
 
 # Generate topic
