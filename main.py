@@ -29,33 +29,33 @@ def startup_event():
     scheduler.start()
 
 
-    # Clean last 7 days log file every day at 12 AM
+    # Clean last 7 days log file every day at 12 AM and 12 PM
     scheduler.add_job(
         automation_jobs.clean_last_7_days_log_file_job,
         "cron",
         id="clean_last_7_days_log_file",
-        hour=0,
+        hour="0,12",
         max_instances=1,
         replace_existing=True,
     )
 
-    # Clean last 7 days contents every day at 12:10 AM
+    # Clean last 7 days contents every day at 12:10 AM and 12:10 PM
     scheduler.add_job(
         automation_jobs.clean_last_7_days_contents_job,
         "cron",
         id="clean_last_7_days_contents",
-        hour=0,
+        hour="0,12",
         minute=10,
         max_instances=1,
         replace_existing=True,
     )
 
-    # Clean uploaded videos every day at 12:30 AM
+    # Clean uploaded videos every day at 12:30 AM and 12:30 PM
     scheduler.add_job(
         automation_jobs.clean_uploaded_video_job,
         "cron",
         id="clean_uploaded_video",
-        hour=0,
+        hour="0,12",
         minute=30,
         max_instances=1,
         replace_existing=True,
