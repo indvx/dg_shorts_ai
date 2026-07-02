@@ -25,7 +25,7 @@ class ScriptService(BaseService):
         logger.info(f"Starting to clean uploaded videos")
         try:
             logger.info(f"Step 1/4: Getting videos")
-            videos = self.short_video_service.get_short_videos_by_status(
+            videos = self.short_video_service.get_short_video_by_status(
                 self.db, short_video_status.ShortVideoStatus.PUBLISHED
             )
             logger.info(f"Step 2/4: Got videos: {len(videos)} videos")
@@ -234,7 +234,7 @@ class ScriptService(BaseService):
 
     def clean_last_7_days_contents(self):
         logger.info(f"Step 1/4: Getting contents")
-        contents = content_crud.get_all_contents(self.db, days=7)
+        contents = content_crud.get_days_old_contents(self.db, days=7)
         logger.info(f"Step 2/4: Got contents {len(contents)}")
 
         try:
