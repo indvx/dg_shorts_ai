@@ -21,41 +21,6 @@ class ScriptService(BaseService):
         self.content_service = ContentService()
         self.short_video_service = ShortVideoService()
 
-    # def clean_uploaded_video(self):
-    #     logger.info(f"Starting to clean uploaded videos")
-    #     try:
-    #         logger.info(f"Step 1/4: Getting videos")
-    #         videos = self.short_video_service.get_short_video_by_status(
-    #             self.db, short_video_status.ShortVideoStatus.PUBLISHED
-    #         )
-    #         logger.info(f"Step 2/4: Got videos: {len(videos)} videos")
-    #         logger.info(f"Step 3/4: Cleaning videos")
-    #         for video in videos:
-    #             logger.info(f"Cleaning video: {video.id}")
-    #             if os.path.exists(video.output_path):
-    #                 logger.info(f"Deleting video: {video.output_path}")
-    #                 os.remove(video.output_path)
-    #                 logger.info(f"Deleted video: {video.output_path}")
-    #             if os.path.exists(video.content.audio_path):
-    #                 logger.info(f"Deleting video: {video.content.audio_path}")
-    #                 os.remove(video.content.audio_path)
-    #                 logger.info(f"Deleted video: {video.content.audio_path}")
-    #             if os.path.exists(video.background_video_url):
-    #                 logger.info(f"Deleting video: {video.background_video_url}")
-    #                 os.remove(video.background_video_url)
-    #                 logger.info(f"Deleted video: {video.background_video_url}")
-    #             logger.info(f"Deleting video from db: {video.id}")
-    #             content_crud.delete_content(self.db, video.content)
-    #             logger.info(f"Deleted video from db: {video.id}")
-    #             short_video_crud.delete_short_video(self.db, video)
-    #             logger.info(f"Deleted video from db: {video.id}")
-    #         logger.info(f"Step 4/4: Deleted videos")
-    #     except Exception as e:
-    #         if isinstance(e, HTTPException):
-    #             logger.error(f"Error 1: {e.status_code} - {e.detail}")
-    #         else:
-    #             logger.error(f"Error 1: {str(e)}")
-    #         return
 
     def clean_last_7_days_log_file(self):
         logger.info("Starting log cleanup")

@@ -150,7 +150,7 @@ class LLMService(BaseService):
             logger.error(f"Metadata parsing failed: {str(e)}")
             raise RuntimeError("Invalid metadata format") from e
 
-    def generate_topic(self, categories: Optional[str] = None) -> str:
+    def generate_topic(self, categories: Optional[str] = None, existing_topics: list[str] = []) -> str:
         category_text = (
             f"Choose from: {categories}"
             if categories
@@ -182,6 +182,9 @@ class LLMService(BaseService):
             - Business secrets
 
             Return ONLY the topic text.
+
+            Existing topics to avoid:
+            {existing_topics}
 
             Categories:
             {category_text}

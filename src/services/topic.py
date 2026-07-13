@@ -13,7 +13,9 @@ class TopicService(BaseService):
 
     def create_topic(self, topic_name: str = None):
         try:
-            new_topic = self.llm_service.generate_topic(topic_name)
+            topics = topic_crud.get_topics(self.db)
+            existing_topics = [topic.name for topic in topics]
+            new_topic = self.llm_service.generate_topic(topic_name, existing_topics)
         except Exception as e:
             logger.error(f"Failed to generate topic: {str(e)}")
             if isinstance(e, HTTPException):

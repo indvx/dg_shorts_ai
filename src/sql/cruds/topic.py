@@ -109,3 +109,9 @@ def delete_topic(db: Session, topic: Topic) -> bool:
     db.delete(topic)
     db.commit()
     return True
+
+
+def get_topics(db: Session):
+    query = db.query(Topic)
+    items = query.all()
+    return items

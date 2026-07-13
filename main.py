@@ -61,57 +61,57 @@ def startup_event():
     #     replace_existing=True,
     # )
 
-    # Generate topic at 7:53 AM, 12:53 PM, 5:53 PM, 7:53 PM
+    # Generate topic at 7:50 AM, 12:50 PM, 5:50 PM, 7:50 PM
     scheduler.add_job(
         automation_jobs.generate_topic_job,
         "cron",
         id="generate_topic",
         hour="7,12,17,19",
-        minute=53,
+        minute=50,
         max_instances=1,
         replace_existing=True,
     )
 
-    # Create content at 7:54 AM, 12:54 PM, 5:54 PM, 7:54 PM
+    # Create content at 7:51 AM, 12:51 PM, 5:51 PM, 7:51 PM
     scheduler.add_job(
         automation_jobs.create_content_job,
         "cron",
         id="create_content",
+        hour="7,12,17,19",
+        minute=51,
+        max_instances=1,
+        replace_existing=True,
+    )
+
+    # Create audio at 7:52 AM, 12:52 PM, 5:52 PM, 7:52 PM
+    scheduler.add_job(
+        automation_jobs.create_audio_job,
+        "cron",
+        id="create_audio",
+        hour="7,12,17,19",
+        minute=52,
+        max_instances=1,
+        replace_existing=True,
+    )
+
+    # Fetch and generate video at 7:54 AM, 12:54 PM, 5:54 PM, 7:54 PM
+    scheduler.add_job(
+        automation_jobs.fetch_and_generate_video_job,
+        "cron",
+        id="fetch_and_generate_video",
         hour="7,12,17,19",
         minute=54,
         max_instances=1,
         replace_existing=True,
     )
 
-    # Create audio at 7:55 AM, 12:55 PM, 5:55 PM, 7:55 PM
-    scheduler.add_job(
-        automation_jobs.create_audio_job,
-        "cron",
-        id="create_audio",
-        hour="7,12,17,19",
-        minute=55,
-        max_instances=1,
-        replace_existing=True,
-    )
-
-    # Fetch and generate video at 7:56 AM, 12:56 PM, 5:56 PM, 7:56 PM
-    scheduler.add_job(
-        automation_jobs.fetch_and_generate_video_job,
-        "cron",
-        id="fetch_and_generate_video",
-        hour="7,12,17,19",
-        minute=56,
-        max_instances=1,
-        replace_existing=True,
-    )
-
-    # Merge video and audio at 7:57 AM, 12:57 PM, 5:57 PM, 7:57 PM
+    # Merge video and audio at 7:56 AM, 12:56 PM, 5:56 PM, 7:56 PM
     scheduler.add_job(
         automation_jobs.merge_video_and_audio_job,
         "cron",
         id="merge_video_and_audio",
         hour="7,12,17,19",
-        minute=57,
+        minute=56,
         # second=30,
         max_instances=1,
         replace_existing=True,
@@ -134,7 +134,7 @@ def startup_event():
         "cron",
         id="upload_video_on_youtube",
         hour="8,13,18,20",
-        minute=0,
+        minute=2,
         max_instances=1,
         replace_existing=True,
     )
