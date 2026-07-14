@@ -21,13 +21,14 @@ class ScriptService(BaseService):
         self.content_service = ContentService()
         self.short_video_service = ShortVideoService()
 
-
     def clean_last_7_days_log_file(self):
         logger.info("Starting log cleanup")
         log_dir = "logs"
         try:
             logger.info(f"Step 1/4: Getting log files")
-            logger.info(f"Step 2/4: Got log files: {len(os.listdir(log_dir))} log files")
+            logger.info(
+                f"Step 2/4: Got log files: {len(os.listdir(log_dir))} log files"
+            )
             logger.info(f"Step 3/4: Cleaning log files")
             cutoff = datetime.now(UTC).date() - timedelta(days=7)
             for log_file in os.listdir(log_dir):
@@ -191,6 +192,9 @@ class ScriptService(BaseService):
             self.short_video_service.upload_video_on_youtube(short_video.id)
             logger.info(f"Step 4/4: Uploaded video to youtube")
         except Exception as e:
+            short_video_crud.update_short_video(
+                short_video, {"status": short_video_status.ShortVideoStatus.FAILED}
+            )
             if isinstance(e, HTTPException):
                 logger.error(f"Error 9: {e.status_code} - {e.detail}")
             else:
@@ -215,31 +219,61 @@ class ScriptService(BaseService):
                     or content.status == content_status.ContentStatus.ERROR
                 ):
                     logger.info(f"Cleaning content {content.id}")
-                    if content.audio_path is not None and os.path.exists(content.audio_path):
+                    if content.audio_path is not None and os.path.exists(
+                        content.audio_path
+                    ):
                         os.remove(content.audio_path)
                         logger.info(f"Cleaned content {content.id} audio path")
                     content_crud.delete_content(self.db, content)
                     logger.info(f"Cleaned content {content.id}")
-                elif (len(content.short_video) > 0 and content.status == content_status.ContentStatus.VIDEO_PUBLISHED):
+                elif (
+                    len(content.short_video) > 0
+                    and content.status == content_status.ContentStatus.VIDEO_PUBLISHED
+                ):
                     logger.info(f"Content {content.id} is published")
                     if len(content.short_video) > 0:
                         for short_video in content.short_video:
-                            if short_video.status == short_video_status.ShortVideoStatus.PUBLISHED:
+                            if (
+                                short_video.status
+                                == short_video_status.ShortVideoStatus.PUBLISHED
+                                or short_video.status
+                                == short_video_status.ShortVideoStatus.FAILED
+                            ):
                                 logger.info(f"Cleaning video: {short_video.id}")
-                                if short_video.output_path and os.path.exists(short_video.output_path):
-                                    logger.info(f"Deleting video: {short_video.output_path}")
+                                if short_video.output_path and os.path.exists(
+                                    short_video.output_path
+                                ):
+                                    logger.info(
+                                        f"Deleting video: {short_video.output_path}"
+                                    )
                                     os.remove(short_video.output_path)
-                                    logger.info(f"Deleted video: {short_video.output_path}")
-                                if short_video.content.audio_path and os.path.exists(short_video.content.audio_path):
-                                    logger.info(f"Deleting video: {short_video.content.audio_path}")
+                                    logger.info(
+                                        f"Deleted video: {short_video.output_path}"
+                                    )
+                                if short_video.content.audio_path and os.path.exists(
+                                    short_video.content.audio_path
+                                ):
+                                    logger.info(
+                                        f"Deleting video: {short_video.content.audio_path}"
+                                    )
                                     os.remove(short_video.content.audio_path)
-                                    logger.info(f"Deleted video: {short_video.content.audio_path}")
-                                if short_video.background_video_url and os.path.exists(short_video.background_video_url):
-                                    logger.info(f"Deleting video: {short_video.background_video_url}")
+                                    logger.info(
+                                        f"Deleted video: {short_video.content.audio_path}"
+                                    )
+                                if short_video.background_video_url and os.path.exists(
+                                    short_video.background_video_url
+                                ):
+                                    logger.info(
+                                        f"Deleting video: {short_video.background_video_url}"
+                                    )
                                     os.remove(short_video.background_video_url)
-                                    logger.info(f"Deleted video: {short_video.background_video_url}")
+                                    logger.info(
+                                        f"Deleted video: {short_video.background_video_url}"
+                                    )
                                 logger.info(f"Deleting video from db: {short_video.id}")
-                                short_video_crud.delete_short_video(self.db, short_video)
+                                short_video_crud.delete_short_video(
+                                    self.db, short_video
+                                )
                                 logger.info(f"Deleted video from db: {short_video.id}")
                     content_crud.delete_content(self.db, short_video.content)
             logger.info(f"Step 4/4: Cleaned last 7 days contents")
